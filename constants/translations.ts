@@ -118,7 +118,7 @@ export const translations = {
     fastSearch: "بحث سريع",
   },
   en: {
-    title: "Advanced Facebook Groups & Pages Monitor",
+    title: "🐧",
     subtitle: "Professional tool for monitoring and analyzing Facebook posts with AI",
     lastUpdate: "Last Update",
     posts: "Posts",
