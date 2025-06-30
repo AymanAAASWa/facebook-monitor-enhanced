@@ -1,7 +1,7 @@
 export const translations = {
   ar: {
     title: "🐧",
-    subtitle: "أداة احترافية لمراقبة وتحليل منشورات فيسبوك مع ذكاء اصطناعي",
+    subtitle: "🛠️",
     lastUpdate: "آخر تحديث",
     posts: "المنشورات",
     analytics: "التحليلات",
@@ -119,7 +119,7 @@ export const translations = {
   },
   en: {
     title: "🐧",
-    subtitle: "Professional tool for monitoring and analyzing Facebook posts with AI",
+    subtitle: "🛠️",
     lastUpdate: "Last Update",
     posts: "Posts",
     analytics: "Analytics",
