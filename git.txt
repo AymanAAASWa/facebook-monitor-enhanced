@@ -1,0 +1,17 @@
+# نسخ المشروع من GitHub
+git clone https://github.com/username/repo-name.git
+
+# الدخول إلى مجلد المشروع
+cd repo-name
+
+# عمل تعديل على الكود
+code .
+
+# إضافة التعديلات
+git add .
+
+# حفظ التعديلات
+git commit -m "Update after v0.dev changes"
+
+# رفع التغييرات إلى GitHub
+git push origin main
