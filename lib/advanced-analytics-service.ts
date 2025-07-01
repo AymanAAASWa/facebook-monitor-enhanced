@@ -457,16 +457,27 @@ export class AdvancedAnalyticsService {
       "ANGRY": 0,
       "CARE": 0
     }
-    const commentSentiment: { [sentiment: string]: number } = {}
+    const commentSentiment: { [sentiment: string]: number } = {
+      "positive": 0,
+      "negative": 0,
+      "neutral": 0,
+      "mixed": 0
+    }
     const shareAnalysis: { [source: string]: number } = {}
     const viralContent: Array<any> = []
     const engagementTrends: Array<any> = []
 
     posts.forEach((post) => {
-      // تحليل أنواع التفاعل
-      if (post.reactions?.data) {
+      // تحليل أنواع التفاعل - تحسين الحصول على البيانات
+      if (post.reactions?.summary?.total_count) {
+        // إذا كان لدينا ملخص فقط، نوزع على LIKE افتراضياً
+        reactionTypes["LIKE"] += post.reactions.summary.total_count
+      }
+      
+      if (post.reactions?.data && Array.isArray(post.reactions.data)) {
         post.reactions.data.forEach((reaction: any) => {
-          reactionTypes[reaction.type] = (reactionTypes[reaction.type] || 0) + 1
+          const type = reaction.type || "LIKE"
+          reactionTypes[type] = (reactionTypes[type] || 0) + 1
         })
       }
       

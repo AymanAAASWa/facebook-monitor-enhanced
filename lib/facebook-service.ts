@@ -183,6 +183,8 @@ export class FacebookService {
           "from{id,name,picture}",
           "attachments{media,type,subattachments}",
           "shares",
+          "likes.summary(true)",
+          "reactions.summary(true)",
           includeComments ? "comments.limit(25){id,message,created_time,from{id,name,picture},like_count,comment_count}" : "",
         ].filter(Boolean).join(","),
         limit: String(limit),
@@ -232,6 +234,8 @@ export class FacebookService {
                 "from{id,name,picture}",
                 "attachments{media,type,subattachments}",
                 "shares",
+                "likes.summary(true)",
+                "reactions.summary(true)",
               ].join(","),
               limit: String(limit),
             }

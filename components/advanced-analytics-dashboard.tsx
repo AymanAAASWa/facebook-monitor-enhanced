@@ -531,7 +531,9 @@ export function AdvancedAnalyticsDashboard({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {Object.entries(analytics.engagementAnalysis.reactionTypes).map(([type, count], index) => (
+                  {Object.entries(analytics.engagementAnalysis.reactionTypes)
+                    .filter(([type, count]) => count > 0)
+                    .map(([type, count], index) => (
                     <div key={type} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className={`w-3 h-3 rounded-full`} style={{ backgroundColor: colors[index % colors.length] }} />
@@ -545,9 +547,12 @@ export function AdvancedAnalyticsDashboard({
                            type === 'CARE' ? '🤗 اهتمام' : type}
                         </span>
                       </div>
-                      <span className="font-bold">{count}</span>
+                      <span className="font-bold">{count.toLocaleString()}</span>
                     </div>
                   ))}
+                  {Object.values(analytics.engagementAnalysis.reactionTypes).every(count => count === 0) && (
+                    <p className="text-center text-gray-500 py-4">لم يتم العثور على تفاعلات حتى الآن</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -611,17 +616,164 @@ export function AdvancedAnalyticsDashboard({
 
         {/* Performance Tab */}
         <TabsContent value="performance" className="space-y-6">
-          {/* Placeholder for Performance Data */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Best Performing Posts */}
+            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="w-5 h-5 text-yellow-500" />
+                  أفضل المنشورات أداءً
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {analytics.performanceAnalysis.bestPerformingPosts.slice(0, 5).map((post, index) => (
+                    <div key={post.id} className="p-3 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge variant="outline" className="bg-green-50">
+                          #{index + 1}
+                        </Badge>
+                        <Badge variant="secondary">{post.score.toFixed(1)} نقطة</Badge>
+                      </div>
+                      <p className="text-sm mb-2">{post.content}...</p>
+                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <span>📈 {post.engagement} تفاعل</span>
+                        <span>👁️ {post.reach} وصول</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Content Optimization */}
+            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+              <CardHeader>
+                <CardTitle>توصيات التحسين</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {analytics.performanceAnalysis.contentOptimization.recommendedActions.map((action, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <p className="font-medium text-sm">{action.action}</p>
+                        <Badge 
+                          variant={action.priority === "عالي" ? "destructive" : action.priority === "متوسط" ? "secondary" : "outline"}
+                          className="mt-1"
+                        >
+                          {action.priority}
+                        </Badge>
+                      </div>
+                      <div className="text-right">
+                        <Progress value={action.impact} className="w-16 mb-1" />
+                        <span className="text-xs text-gray-500">{action.impact}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Trends Tab */}
         <TabsContent value="trends" className="space-y-6">
-          {/* Placeholder for Trends Data */}
+          <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                المواضيع الرائجة
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {analytics.trendAnalysis.trendingTopics.map((topic, index) => (
+                  <div key={topic.topic} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline">#{index + 1}</Badge>
+                      <span className="font-medium">{topic.topic}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">{topic.mentions} ذكر</span>
+                      <Badge variant={topic.growth > 50 ? "destructive" : "secondary"}>
+                        +{topic.growth.toFixed(1)}%
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+                {analytics.trendAnalysis.trendingTopics.length === 0 && (
+                  <p className="text-center text-gray-500 py-8">لا توجد اتجاهات واضحة حالياً</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Predictions Tab */}
         <TabsContent value="predictions" className="space-y-6">
-          {/* Placeholder for Predictions Data */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Growth Predictions */}
+            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-purple-500" />
+                  توقعات النمو
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {Object.entries(analytics.predictiveAnalysis.growthPrediction).map(([period, value]) => (
+                    <div key={period} className="flex items-center justify-between">
+                      <span className="font-medium">{period}</span>
+                      <div className="flex items-center gap-2">
+                        <Progress value={Math.min((value / 1000) * 100, 100)} className="w-20" />
+                        <span className="text-sm font-bold">{value}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Risk Analysis */}
+            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="w-5 h-5 text-orange-500" />
+                  تحليل المخاطر
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2">مخاطر المحتوى</h4>
+                    {analytics.predictiveAnalysis.riskAnalysis.contentRisks.map((risk, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 border rounded mb-2">
+                        <span className="text-sm">{risk.risk}</span>
+                        <Badge variant={risk.probability > 50 ? "destructive" : "outline"}>
+                          {risk.probability}%
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2">مخاطر التفاعل</h4>
+                    {analytics.predictiveAnalysis.riskAnalysis.engagementRisks.map((risk, index) => (
+                      <div key={index} className="p-2 border rounded mb-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium">{risk.risk}</span>
+                          <Badge variant={risk.likelihood > 40 ? "destructive" : "secondary"}>
+                            {risk.likelihood}%
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-500">{risk.mitigation}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
