@@ -179,7 +179,7 @@ export class AdvancedAnalyticsService {
     const totalShares = posts.reduce((sum, post) => sum + (post.shares?.count || 0), 0)
 
     const averageEngagement = totalPosts > 0 ? (totalComments + totalReactions + totalShares) / totalPosts : 0
-    const engagementRate = totalUsers > 0 ? ((totalComments + totalReactions) / totalUsers) * 100 : 0
+    const engagementRate = totalPosts > 0 ? ((totalComments + totalReactions) / totalPosts) * 100 : 0
 
     return {
       totalPosts,
