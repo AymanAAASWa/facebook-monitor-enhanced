@@ -489,20 +489,8 @@ export class AdvancedAnalyticsService {
       
       // تحليل التفاعلات التفصيلية باستخدام البنية الجديدة
       if (post.reactions) {
-        // استخدام البيانات التفصيلية الجديدة
-        const reactionTypesToCheck = ['LIKE', 'LOVE', 'WOW', 'HAHA', 'SAD', 'ANGRY', 'CARE', 'THANKFUL', 'PRIDE']
-        
-        reactionTypesToCheck.forEach(type => {
-          const reactionData = (post.reactions as any)?.[type]
-          if (reactionData?.summary?.total_count) {
-            const count = reactionData.summary.total_count
-            reactionTypes[type] = (reactionTypes[type] || 0) + count
-            postReactions += count
-          }
-        })
-        
-        // إذا لم تكن البيانات التفصيلية متاحة، استخدم البيانات القديمة
-        if (postReactions === 0 && post.reactions?.data && Array.isArray(post.reactions.data)) {
+        // استخدام البيانات التفصيلية إذا كانت متاحة
+        if (post.reactions?.data && Array.isArray(post.reactions.data)) {
           post.reactions.data.forEach((reaction: any) => {
             const type = reaction.type || "LIKE"
             reactionTypes[type] = (reactionTypes[type] || 0) + 1
@@ -510,7 +498,7 @@ export class AdvancedAnalyticsService {
           })
         }
         
-        // إضافة العدد الإجمالي من الـ summary كبديل أخير
+        // استخدام العدد الإجمالي من الـ summary كبديل
         if (postReactions === 0 && post.reactions?.summary?.total_count) {
           const totalReactionCount = post.reactions.summary.total_count
           reactionTypes["LIKE"] += totalReactionCount // افتراض أن معظمها إعجابات
