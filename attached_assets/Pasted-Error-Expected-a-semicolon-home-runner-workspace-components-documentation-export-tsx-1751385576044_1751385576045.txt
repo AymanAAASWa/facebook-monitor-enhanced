@@ -1,0 +1,173 @@
+Error:   × Expected a semicolon
+      ╭─[/home/runner/workspace/components/documentation-export.tsx:1513:1]
+ 1510 │         '  <h3 style="color: #1e40af; margin-bottom: 15px;">📊 إحصائيات المشروع</h3>',
+ 1511 │         '  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 15px;">',
+ 1512 │         '    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">',
+ 1513 │         `      <strong>تاريخ الإنشاء:</strong><br>${new Date().toLocaleDateString('ar-EG')}`,
+      ·                              ───────
+ 1514 │         '    </div>',
+ 1515 │         '    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">',
+ 1516 │         '      <strong>حجم المشروع:</strong><br>~200KB من الكود',
+      ╰────
+  × Expected a semicolon
+      ╭─[/home/runner/workspace/components/documentation-export.tsx:1513:1]
+ 1510 │         '  <h3 style="color: #1e40af; margin-bottom: 15px;">📊 إحصائيات المشروع</h3>',
+ 1511 │         '  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 15px;">',
+ 1512 │         '    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">',
+ 1513 │         `      <strong>تاريخ الإنشاء:</strong><br>${new Date().toLocaleDateString('ar-EG')}`,
+      ·                                                                                            ─
+ 1514 │         '    </div>',
+ 1515 │         '    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">',
+ 1516 │         '      <strong>حجم المشروع:</strong><br>~200KB من الكود',
+      ╰────
+  × Unterminated template
+      ╭─[/home/runner/workspace/components/documentation-export.tsx:1577:1]
+ 1574 │       }
+ 1575 │     
+ 1576 │       return (
+ 1577 │ ╭─▶     <Card className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm`}>
+ 1578 │ │         <CardHeader>
+ 1579 │ │           <CardTitle className="flex items-center gap-2">
+ 1580 │ │             <BookOpen className="w-5 h-5" />
+ 1581 │ │             {text.title}
+ 1582 │ │           </CardTitle>
+ 1583 │ │           <p className="text-sm text-gray-500">{text.description}</p>
+ 1584 │ │         </CardHeader>
+ 1585 │ │         <CardContent className="space-y-6">
+ 1586 │ │           {/* البحث في الملفات */}
+ 1587 │ │           <div className="relative">
+ 1588 │ │             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+ 1589 │ │             <input
+ 1590 │ │               type="text"
+ 1591 │ │               placeholder={text.searchPlaceholder}
+ 1592 │ │               value={searchTerm}
+ 1593 │ │               onChange={(e) => setSearchTerm(e.target.value)}
+ 1594 │ │               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+ 1595 │ │             />
+ 1596 │ │           </div>
+ 1597 │ │   
+ 1598 │ │           {/* شجرة الملفات المحسنة */}
+ 1599 │ │           <div>
+ 1600 │ │             <h4 className="font-medium mb-3 flex items-center gap-2">
+ 1601 │ │               <TreePine className="w-4 h-4" />
+ 1602 │ │               خريطة هيكل المشروع التفصيلية
+ 1603 │ │               <Badge variant="secondary" className="text-xs">
+ 1604 │ │                 {Object.keys(filteredStructure).length} عنصر
+ 1605 │ │               </Badge>
+ 1606 │ │             </h4>
+ 1607 │ │             <Card className="p-4 max-h-96 overflow-y-auto">
+ 1608 │ │               <div className="space-y-2">
+ 1609 │ │                 {Object.entries(filteredStructure).map(([key, node]) => (
+ 1610 │ │                   <FileTreeNode key={key} node={node} path={key} />
+ 1611 │ │                 ))}
+ 1612 │ │                 {Object.keys(filteredStructure).length === 0 && (
+ 1613 │ │                   <div className="text-center py-8 text-gray-500">
+ 1614 │ │                     <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+ 1615 │ │                     <p>لم يتم العثور على ملفات مطابقة</p>
+ 1616 │ │                   </div>
+ 1617 │ │                 )}
+ 1618 │ │               </div>
+ 1619 │ │             </Card>
+ 1620 │ │           </div>
+ 1621 │ │   
+ 1622 │ │           {/* تفاصيل الملف المحدد */}
+ 1623 │ │           <FileDetailsPanel />
+ 1624 │ │   
+ 1625 │ │           {/* Features List */}
+ 1626 │ │           <div>
+ 1627 │ │             <h4 className="font-medium mb-3 flex items-center gap-2">
+ 1628 │ │               <Info className="w-4 h-4" />
+ 1629 │ │               {text.features}
+ 1630 │ │             </h4>
+ 1631 │ │             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+ 1632 │ │               <Badge variant="outline" className="justify-start p-2">
+ 1633 │ │                 <CheckCircle className="w-3 h-3 mr-2 text-green-500" />
+ 1634 │ │                 {text.feature1}
+ 1635 │ │               </Badge>
+ 1636 │ │               <Badge variant="outline" className="justify-start p-2">
+ 1637 │ │                 <CheckCircle className="w-3 h-3 mr-2 text-green-500" />
+ 1638 │ │                 {text.feature2}
+ 1639 │ │               </Badge>
+ 1640 │ │               <Badge variant="outline" className="justify-start p-2">
+ 1641 │ │                 <CheckCircle className="w-3 h-3 mr-2 text-green-500" />
+ 1642 │ │                 {text.feature3}
+ 1643 │ │               </Badge>
+ 1644 │ │               <Badge variant="outline" className="justify-start p-2">
+ 1645 │ │                 <CheckCircle className="w-3 h-3 mr-2 text-green-500" />
+ 1646 │ │                 {text.feature4}
+ 1647 │ │               </Badge>
+ 1648 │ │               <Badge variant="outline" className="justify-start p-2">
+ 1649 │ │                 <CheckCircle className="w-3 h-3 mr-2 text-green-500" />
+ 1650 │ │                 {text.feature5}
+ 1651 │ │               </Badge>
+ 1652 │ │               <Badge variant="outline" className="justify-start p-2">
+ 1653 │ │                 <CheckCircle className="w-3 h-3 mr-2 text-green-500" />
+ 1654 │ │                 {text.feature6}
+ 1655 │ │               </Badge>
+ 1656 │ │             </div>
+ 1657 │ │           </div>
+ 1658 │ │   
+ 1659 │ │           {/* Export Buttons */}
+ 1660 │ │           <div>
+ 1661 │ │             <h4 className="font-medium mb-3 flex items-center gap-2">
+ 1662 │ │               <FileType className="w-4 h-4" />
+ 1663 │ │               {text.formats}
+ 1664 │ │             </h4>
+ 1665 │ │             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+ 1666 │ │               <Button
+ 1667 │ │                 onClick={exportAsPdf}
+ 1668 │ │                 disabled={exporting}
+ 1669 │ │                 className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+ 1670 │ │               >
+ 1671 │ │                 {exporting ? (
+ 1672 │ │                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+ 1673 │ │                 ) : (
+ 1674 │ │                   <FileText className="w-4 h-4" />
+ 1675 │ │                 )}
+ 1676 │ │                 {exporting ? text.exporting : text.exportPdf}
+ 1677 │ │               </Button>
+ 1678 │ │   
+ 1679 │ │               <Button onClick={exportAsText} variant="outline" className="flex items-center gap-2">
+ 1680 │ │                 <FileText className="w-4 h-4" />
+ 1681 │ │                 {text.exportTxt}
+ 1682 │ │               </Button>
+ 1683 │ │   
+ 1684 │ │               <Button onClick={exportAsHtml} variant="outline" className="flex items-center gap-2">
+ 1685 │ │                 <Download className="w-4 h-4" />
+ 1686 │ │                 {text.exportHtml}
+ 1687 │ │               </Button>
+ 1688 │ │             </div>
+ 1689 │ │           </div>
+ 1690 │ │   
+ 1691 │ │           {/* Status Messages */}
+ 1692 │ │           {exportStatus && (
+ 1693 │ │             <Alert
+ 1694 │ │               className={exportStatus.type === "success" ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}
+ 1695 │ │             >
+ 1696 │ │               <CheckCircle className="w-4 h-4" />
+ 1697 │ │               <AlertDescription className={exportStatus.type === "success" ? "text-green-700" : "text-red-700"}>
+ 1698 │ │                 {exportStatus.message}
+ 1699 │ │               </AlertDescription>
+ 1700 │ │             </Alert>
+ 1701 │ │           )}
+ 1702 │ │   
+ 1703 │ │           {/* Note */}
+ 1704 │ │           <Alert>
+ 1705 │ │             <Info className="w-4 h-4" />
+ 1706 │ │             <AlertDescription>
+ 1707 │ │               <strong>{text.note}:</strong> {text.noteText}
+ 1708 │ │             </AlertDescription>
+ 1709 │ │           </Alert>
+ 1710 │ │         </CardContent>
+ 1711 │ │       </Card>
+ 1712 │ │     )
+ 1713 │ ╰─▶ }
+      ╰────
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/documentation-export.tsx
+./components/facebook-monitor.tsx
+./app/page.tsx
