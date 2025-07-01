@@ -189,7 +189,7 @@ export class FacebookService {
       let baseFields = []
 
       if (sourceType === "group") {
-        // للمجموعات - حقول أساسية فقط لتجنب المشاكل
+        // للمجموعات - حقول أساسية مع التعليقات
         baseFields = [
           "id",
           "message",
@@ -199,9 +199,9 @@ export class FacebookService {
           "type"
         ]
 
-        // للمجموعات - تجنب إضافة التعليقات في الطلب الأساسي
+        // للمجموعات - إضافة التعليقات بحد أقل لتجنب المشاكل
         if (includeComments) {
-          baseFields.push("comments.limit(5){id,message,created_time,from{id,name}}")
+          baseFields.push("comments.limit(10){id,message,created_time,from{id,name}}")
         }
       } else {
         // للصفحات - حقول كاملة
@@ -426,16 +426,43 @@ export class FacebookService {
           "created_time", 
           "from{id,name}",
           "type",
-          "permalink_url"
+          "permalink_url",
+          "comments.limit(10){id,message,created_time,from{id,name}}"
         ].join(","),
         limit: String(Math.min(limit, 25)) // حد أقصى 25 للمجموعات
       }
 
       const response = await this.makeRequest<{ data: FacebookPost[]; paging: any }>(`/${groupId}/feed`, params)
 
-      console.log(`Successfully fetched ${response.data?.length || 0} posts from group feed`)
+      if (response.data) {
+        console.log(`Successfully fetched ${response.data.length} posts from group feed with comments`)
+        
+        // جلب التعليقات لكل منشور إذا لم تكن موجودة
+        const postsWithComments = await Promise.all(
+          response.data.map(async (post) => {
+            if (!post.comments || !post.comments.data || post.comments.data.length === 0) {
+              try {
+                const commentsResult = await this.getPostComments(post.id, 10)
+                return {
+                  ...post,
+                  comments: { data: commentsResult.data || [] }
+                }
+              } catch (commentError) {
+                console.warn(`Failed to get comments for group post ${post.id}:`, commentError)
+                return {
+                  ...post,
+                  comments: { data: [] }
+                }
+              }
+            }
+            return post
+          })
+        )
 
-      return { data: response.data || [] }
+        return { data: postsWithComments }
+      }
+
+      return { data: [] }
     } catch (error: any) {
       console.error("Error fetching group feed:", error)
 

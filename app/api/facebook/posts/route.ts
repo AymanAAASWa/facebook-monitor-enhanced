@@ -24,19 +24,14 @@ export async function POST(request: NextRequest) {
 
     let result
     
-    if (sourceType === "group") {
-      // للمجموعات - استخدم الطريقة الخاصة
-      result = await service.getGroupFeed(sourceId, validatedLimit)
-    } else {
-      // للصفحات - استخدم الطريقة العادية
-      result = await service.getPosts(
-        sourceId, 
-        sourceType as "page" | "group", 
-        validatedLimit, 
-        until, 
-        true // includeComments = true
-      )
-    }
+    // استخدم getPosts للمجموعات والصفحات مع التعليقات
+    result = await service.getPosts(
+      sourceId, 
+      sourceType as "page" | "group", 
+      validatedLimit, 
+      until, 
+      true // includeComments = true
+    )
 
     console.log(`API returned ${result.data?.length || 0} posts from ${sourceType} ${sourceId}`)
 
