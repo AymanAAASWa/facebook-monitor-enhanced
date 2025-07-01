@@ -295,7 +295,7 @@ export function UserAnalyticsViewer({
           <TabsTrigger value="activity">{text.activity}</TabsTrigger>
           <TabsTrigger value="interactions">{text.interactions}</TabsTrigger>
           <TabsTrigger value="insights">{text.insights}</TabsTrigger>
-        </Tabs>
+        </TabsList>
 
         {/* Profile Tab */}
         <TabsContent value="profile" className="space-y-6">
