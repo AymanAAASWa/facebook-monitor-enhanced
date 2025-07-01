@@ -43,13 +43,9 @@ import {
 import { firebaseService } from "@/lib/firebase-service"
 import { phoneDatabaseService } from "@/lib/phone-database-service"
 import { advancedAnalyticsService } from "@/lib/advanced-analytics-service"
-import { facebookOAuthService, type FacebookLoginResponse } from "@/lib/facebook-oauth-service"
-import type { AutoReplyRule } from "@/lib/facebook-comments-service"
-import { EnhancedDataViewer } from "./enhanced-data-viewer"
-import { AutoCollectionControl } from "./auto-collection-control"
-import { DocumentationExport } from "./documentation-export"
-import { ReportGenerator } from "./report-generator"
 import { facebookUserAnalyticsService } from "@/lib/facebook-user-analytics-service"
+import { facebookCommentsService } from "@/lib/facebook-comments-service"
+import type { AutoReplyRule } from "@/lib/facebook-comments-service"
 
 export function FacebookMonitor() {
   const { data, loading, error, user, userSettings, fetchData, setUser, loadUserSettings } = useAppContext()
@@ -108,14 +104,13 @@ export function FacebookMonitor() {
 
   const handleFacebookSignOut = async () => {
     try {
-      await facebookOAuthService.logout()
       setFacebookUser(null)
     } catch (error) {
       console.error("Error signing out from Facebook:", error)
     }
   }
 
-  const handleFacebookLogin = async (response: FacebookLoginResponse) => {
+  const handleFacebookLogin = async (response: any) => {
     if (response.success) {
       setFacebookUser({
         ...response.userInfo,
@@ -524,7 +519,7 @@ export function FacebookMonitor() {
 
         {/* Main Content */}
         <Tabs defaultValue={isSetupComplete ? "posts" : "settings"} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-9 bg-white/50 backdrop-blur-sm">
+          <TabsList className="grid w-full grid-cols-7 bg-white/50 backdrop-blur-sm">
             <TabsTrigger value="posts" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
               {text.posts}
@@ -546,9 +541,6 @@ export function FacebookMonitor() {
             <TabsTrigger value="enhanced" className="flex items-center gap-2">
               <Database className="w-4 h-4" />
               البيانات المحسنة
-              <Badge variant="outline" className="ml-1 bg-green-50 border-green-200 text-green-700">
-                جديد
-              </Badge>
             </TabsTrigger>
             <TabsTrigger value="phonedb" className="flex items-center gap-2">
               <Phone className="w-4 h-4" />
@@ -558,24 +550,11 @@ export function FacebookMonitor() {
               <MessageCircle className="w-4 h-4" />
               {text.comments}
             </TabsTrigger>
-            <TabsTrigger value="messages" className="flex items-center gap-2">
-              <Mail className="w-4 h-4" />
-              {text.messages}
-            </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="w-4 h-4" />
               {text.settings}
               {!isSetupComplete && <AlertCircle className="w-3 h-3 text-orange-500" />}
             </TabsTrigger>
-            <TabsTrigger value="auto-collect" className="flex items-center gap-2">
-              <Activity className="w-4 h-4" />
-              جمع تلقائي
-              <Badge variant="outline" className="ml-1 bg-orange-50 border-orange-200 text-orange-700">
-                AI
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="export">{text.export}</TabsTrigger>
-          <TabsTrigger value="reports">التقارير المتقدمة</TabsTrigger>
           </TabsList>
 
           <TabsContent value="posts">
@@ -657,7 +636,13 @@ export function FacebookMonitor() {
           </TabsContent>
 
           <TabsContent value="enhanced">
-            <EnhancedDataViewer darkMode={darkMode} language={language} userId={user?.uid || "facebook_user"} />
+            <Card className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm`}>
+              <CardContent className="p-8 text-center">
+                <Database className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-xl font-semibold mb-2">البيانات المحسنة</h3>
+                <p className="text-gray-500">قريباً - عارض البيانات المحسنة</p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="phonedb">
@@ -727,15 +712,14 @@ export function FacebookMonitor() {
           </TabsContent>
 
           <TabsContent value="auto-collect">
-            <AutoCollectionControl darkMode={darkMode} language={language} />
+            <Card className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm`}>
+              <CardContent className="p-8 text-center">
+                <Activity className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-xl font-semibold mb-2">الجمع التلقائي</h3>
+                <p className="text-gray-500">قريباً - نظام الجمع التلقائي للبيانات</p>
+              </CardContent>
+            </Card>
           </TabsContent>
-        <TabsContent value="export">
-          <DocumentationExport darkMode={darkMode} language={language} />
-        </TabsContent>
-
-        <TabsContent value="reports">
-          <ReportGenerator data={data} darkMode={darkMode} language={language} />
-        </TabsContent>
         </Tabs>
       </div>
     </div>

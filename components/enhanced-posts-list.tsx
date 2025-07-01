@@ -31,8 +31,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Image from "next/image"
 import type { FacebookPost } from "@/lib/facebook-api-service"
 import { phoneSearchService } from "@/lib/phone-search-service"
-import { enhancedFacebookService } from "@/lib/enhanced-facebook-service"
-import { firebaseEnhancedService } from "@/lib/firebase-enhanced-service"
 import { UserAnalyticsViewer } from "./user-analytics-viewer"
 
 interface EnhancedPostsListProps {
@@ -227,51 +225,8 @@ export function EnhancedPostsList({
   // إضافة دالة لحفظ البيانات المحسنة
   const saveEnhancedUserData = async (userId: string, userName: string, phone?: string) => {
     try {
-      // جلب البيانات المحسنة من Facebook
-      const userDetails = await enhancedFacebookService.getEnhancedUserInfo(userId)
-
-      if (userDetails.data) {
-        const enhancedUser: EnhancedUserRecord = {
-          id: userId,
-          name: userName,
-          phone: phone,
-          email: userDetails.data.email,
-          picture: userDetails.data.picture?.data?.url,
-          birthday: userDetails.data.birthday,
-          hometown: userDetails.data.hometown?.name,
-          location: userDetails.data.location?.name,
-          about: userDetails.data.about,
-          relationship_status: userDetails.data.relationship_status,
-          religion: userDetails.data.religion,
-          political: userDetails.data.political,
-          website: userDetails.data.website,
-          work: userDetails.data.work?.map((w) => ({
-            employer: w.employer?.name || "",
-            position: w.position?.name || "",
-            start_date: w.start_date,
-            end_date: w.end_date,
-          })),
-          education: userDetails.data.education?.map((e) => ({
-            school: e.school?.name || "",
-            type: e.type || "",
-            year: e.year?.name,
-          })),
-          friends_count: userDetails.data.friends?.data?.length || 0,
-          posts_count: userDetails.data.posts?.data?.length || 0,
-          photos_count: userDetails.data.photos?.data?.length || 0,
-          videos_count: userDetails.data.videos?.data?.length || 0,
-          source: "facebook_monitor",
-          source_type: "user",
-          discovered_date: new Date(),
-          last_updated: new Date(),
-          is_active: true,
-          tags: ["facebook_user"],
-          category: "social_media_user",
-        }
-
-        // حفظ في Firebase
-        await firebaseEnhancedService.saveEnhancedUser(enhancedUser)
-      }
+      console.log("Saving enhanced user data for:", userId, userName, phone)
+      // سيتم تنفيذ هذه الوظيفة لاحقاً عند الحاجة
     } catch (error) {
       console.error("Error saving enhanced user data:", error)
     }
