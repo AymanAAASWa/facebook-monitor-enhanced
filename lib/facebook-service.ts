@@ -144,7 +144,7 @@ export class FacebookService {
           "from{id,name,picture}",
           "attachments{media,type,subattachments}",
           "shares",
-          includeComments ? "comments.limit(10){id,message,created_time,from{id,name,picture},like_count}" : "",
+          includeComments ? "comments.limit(25){id,message,created_time,from{id,name,picture},like_count,comment_count}" : "",
         ].filter(Boolean).join(","),
         limit: String(limit),
       }
@@ -154,42 +154,83 @@ export class FacebookService {
       }
 
       try {
+        console.log(`Making request to Facebook API with fields: ${params.fields}`)
         const response = await this.makeRequest<{ data: FacebookPost[]; paging: any }>(endpoint, params)
+        
         if (response.data) {
+          console.log(`Successfully fetched ${response.data.length} posts`)
+          
+          // Log comment counts for debugging
+          response.data.forEach((post, index) => {
+            const commentCount = post.comments?.data?.length || 0
+            console.log(`Post ${index + 1}: ${commentCount} comments`)
+          })
+          
           return { data: response.data, paging: response.paging }
         }
       } catch (error: any) {
-        // If request with comments fails due to rate limiting, try without comments
-        if (error.message.includes("يبدو أنك كنت تسيء استخدام") || 
+        console.error("Error fetching posts with comments:", error.message)
+        
+        // If request with comments fails, try to fetch posts separately and then comments
+        if (includeComments && (
+            error.message.includes("يبدو أنك كنت تسيء استخدام") || 
             error.message.includes("368") || 
-            error.message.includes("rate limit")) {
+            error.message.includes("rate limit") ||
+            error.message.includes("permissions")
+        )) {
           
-          console.log("Rate limit hit, retrying without comments...")
+          console.log("Trying alternative approach: fetch posts first, then comments...")
           
-          // Retry without comments
-          params.fields = [
-            "id",
-            "message",
-            "full_picture",
-            "created_time",
-            "updated_time",
-            "from{id,name,picture}",
-            "attachments{media,type,subattachments}",
-            "shares",
-          ].join(",")
-          
-          const retryResponse = await this.makeRequest<{ data: FacebookPost[]; paging: any }>(endpoint, params)
-          
-          // Add empty comments to each post
-          const postsWithEmptyComments = (retryResponse.data || []).map(post => ({
-            ...post,
-            comments: { data: [] }
-          }))
-          
-          return { 
-            data: postsWithEmptyComments, 
-            paging: retryResponse.paging,
-            error: "تم جلب المنشورات بدون تعليقات بسبب حدود API"
+          try {
+            // First get posts without comments
+            const basicParams = {
+              fields: [
+                "id",
+                "message",
+                "full_picture",
+                "created_time",
+                "updated_time",
+                "from{id,name,picture}",
+                "attachments{media,type,subattachments}",
+                "shares",
+              ].join(","),
+              limit: String(limit),
+            }
+            
+            if (until) {
+              basicParams.until = until
+            }
+            
+            const basicResponse = await this.makeRequest<{ data: FacebookPost[]; paging: any }>(endpoint, basicParams)
+            
+            // Then try to get comments for each post individually
+            const postsWithComments = await Promise.all(
+              (basicResponse.data || []).map(async (post) => {
+                try {
+                  const commentsResult = await this.getPostComments(post.id, 10)
+                  return {
+                    ...post,
+                    comments: { data: commentsResult.data || [] }
+                  }
+                } catch (commentError) {
+                  console.warn(`Failed to get comments for post ${post.id}:`, commentError)
+                  return {
+                    ...post,
+                    comments: { data: [] }
+                  }
+                }
+              })
+            )
+            
+            return { 
+              data: postsWithComments, 
+              paging: basicResponse.paging,
+              error: "تم جلب التعليقات بشكل منفصل"
+            }
+            
+          } catch (retryError) {
+            console.error("Alternative approach also failed:", retryError)
+            throw retryError
           }
         }
         throw error

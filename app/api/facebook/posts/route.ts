@@ -3,7 +3,7 @@ import { FacebookService } from "@/lib/facebook-service"
 
 export async function POST(request: NextRequest) {
   try {
-    const { sourceId, accessToken, limit = 10, after } = await request.json()
+    const { sourceId, accessToken, limit = 10, until, sourceType = "page" } = await request.json()
 
     if (!sourceId || !accessToken) {
       return NextResponse.json({ error: "Source ID and access token are required" }, { status: 400 })
@@ -15,10 +15,17 @@ export async function POST(request: NextRequest) {
     // Validate the limit to prevent excessive data requests
     const validatedLimit = Math.min(Math.max(limit, 1), 25) // Between 1 and 25
 
-    const result = await service.getPosts(sourceId, validatedLimit, after)
+    console.log(`Fetching posts from ${sourceId} with limit ${validatedLimit}`)
 
-    // Return posts with comments that were already fetched in the main request
-    return NextResponse.json(result)
+    const result = await service.getPosts(
+      sourceId, 
+      sourceType as "page" | "group", 
+      validatedLimit, 
+      until, 
+      true // includeComments = true
+    )
+
+    console.log(`API returned ${result.data?.length || 0} posts`)
 
     return NextResponse.json(result)
   } catch (error) {
