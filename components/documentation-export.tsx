@@ -1388,6 +1388,18 @@ export function DocumentationExport({ darkMode, language }: DocumentationExportP
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مراقب فيسبوك المتقدم - دليل المستخدم الشامل مع خريطة الملفات التفصيلية</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>"></head_str>
+<new_str>  const exportAsHtml = () => {
+    const fileTreeHtml = generateEnhancedFileTreeHtml(projectStructure)
+    
+    const htmlContent = `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مراقب فيسبوك المتقدم - دليل المستخدم الشامل مع خريطة الملفات التفصيلية</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
     <style>
         body { 
             font-family: 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', sans-serif; 
@@ -1633,12 +1645,95 @@ export function DocumentationExport({ darkMode, language }: DocumentationExportP
   const exportAsPdf = async () => {
     setExporting(true)
     try {
-      // محاكاة تصدير PDF
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      // تحميل مكتبات PDF بشكل ديناميكي
+      const [jsPDF, html2canvas] = await Promise.all([
+        import('jspdf').then(m => m.jsPDF),
+        import('html2canvas').then(m => m.default)
+      ])
+
+      // إنشاء محتوى HTML للتصدير
+      const contentDiv = document.createElement('div')
+      contentDiv.style.width = '210mm'
+      contentDiv.style.padding = '20mm'
+      contentDiv.style.fontFamily = 'Arial, sans-serif'
+      contentDiv.style.fontSize = '12px'
+      contentDiv.style.lineHeight = '1.5'
+      contentDiv.style.direction = 'rtl'
+      contentDiv.style.background = 'white'
+      
+      const htmlContent = `
+        <div style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px;">
+          <h1 style="margin: 0; font-size: 24px;">🔍 مراقب فيسبوك المتقدم</h1>
+          <p style="margin: 10px 0 0 0; font-size: 16px;">دليل المستخدم الشامل مع خريطة الملفات التفصيلية</p>
+        </div>
+        
+        <div style="margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 8px; border-right: 4px solid #2563eb;">
+          <h2 style="color: #1e40af; margin: 0 0 10px 0;">🗂️ خريطة هيكل المشروع</h2>
+          <p style="margin: 0; color: #64748b;">تحتوي على شجرة تفصيلية شاملة لجميع ملفات ومجلدات المشروع</p>
+        </div>
+        
+        ${generateEnhancedFileTreeHtml(projectStructure)}
+        
+        <div style="margin-top: 30px; padding: 20px; background: #f1f5f9; border-radius: 10px; text-align: center;">
+          <h3 style="color: #1e40af; margin-bottom: 15px;">📊 إحصائيات المشروع</h3>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 15px;">
+            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <strong>تاريخ الإنشاء:</strong><br>${new Date().toLocaleDateString('ar-EG')}
+            </div>
+            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <strong>حجم المشروع:</strong><br>~200KB من الكود
+            </div>
+            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <strong>عدد التقنيات:</strong><br>10+ تقنية حديثة
+            </div>
+            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <strong>مستوى التعقيد:</strong><br>متقدم
+            </div>
+          </div>
+        </div>
+        
+        <div style="margin-top: 30px; padding: 15px; background: #f0f9ff; border-radius: 8px; text-align: center; border: 1px solid #bae6fd;">
+          <p style="margin: 0; color: #0c4a6e; font-style: italic;">تم إنشاء هذا التوثيق تلقائياً من مراقب فيسبوك المتقدم</p>
+        </div>
+      `
+      
+      contentDiv.innerHTML = htmlContent
+      document.body.appendChild(contentDiv)
+      
+      // تحويل إلى صورة ثم PDF
+      const canvas = await html2canvas(contentDiv, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      })
+      
+      document.body.removeChild(contentDiv)
+      
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      
+      const imgWidth = 210
+      const pageHeight = 295
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      let heightLeft = imgHeight
+      
+      let position = 0
+      
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+      
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
+      
+      pdf.save('facebook-monitor-complete-guide.pdf')
       setExportStatus({ type: "success", message: text.success })
-      // تصدير كـ HTML محسن بدلاً من PDF
-      exportAsHtml()
     } catch (error) {
+      console.error('PDF export error:', error)
       setExportStatus({ type: "error", message: text.error })
     } finally {
       setExporting(false)

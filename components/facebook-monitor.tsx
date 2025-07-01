@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -48,6 +47,8 @@ import { facebookOAuthService, type FacebookLoginResponse } from "@/lib/facebook
 import type { AutoReplyRule } from "@/lib/facebook-comments-service"
 import { EnhancedDataViewer } from "./enhanced-data-viewer"
 import { AutoCollectionControl } from "./auto-collection-control"
+import { DocumentationExport } from "./documentation-export"
+import { ReportGenerator } from "./report-generator"
 
 export function FacebookMonitor() {
   const { data, loading, error, user, userSettings, fetchData, setUser, loadUserSettings } = useAppContext()
@@ -497,6 +498,8 @@ export function FacebookMonitor() {
                 AI
               </Badge>
             </TabsTrigger>
+            <TabsTrigger value="export">{text.export}</TabsTrigger>
+          <TabsTrigger value="reports">التقارير المتقدمة</TabsTrigger>
           </TabsList>
 
           <TabsContent value="posts">
@@ -650,6 +653,13 @@ export function FacebookMonitor() {
           <TabsContent value="auto-collect">
             <AutoCollectionControl darkMode={darkMode} language={language} />
           </TabsContent>
+        <TabsContent value="export">
+          <DocumentationExport darkMode={darkMode} language={language} />
+        </TabsContent>
+
+        <TabsContent value="reports">
+          <ReportGenerator data={data} darkMode={darkMode} language={language} />
+        </TabsContent>
         </Tabs>
       </div>
     </div>
