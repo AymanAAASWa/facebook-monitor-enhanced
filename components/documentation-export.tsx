@@ -1392,245 +1392,77 @@ export function DocumentationExport({ darkMode, language }: DocumentationExportP
 <new_str>  const exportAsHtml = () => {
     const fileTreeHtml = generateEnhancedFileTreeHtml(projectStructure)
     
-    const htmlContent = `
-<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مراقب فيسبوك المتقدم - دليل المستخدم الشامل مع خريطة الملفات التفصيلية</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
-    <style>
-        body { 
-            font-family: 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', sans-serif; 
-            line-height: 1.7; 
-            margin: 0; 
-            padding: 20px; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        .container { 
-            max-width: 1200px; 
-            margin: 0 auto; 
-            background: white; 
-            padding: 40px; 
-            border-radius: 20px; 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 15px;
-            color: white;
-        }
-        .two-column { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 40px; 
-            margin: 30px 0; 
-        }
-        .file-tree { 
-            background: #f8fafc; 
-            padding: 25px; 
-            border-radius: 15px; 
-            border: 2px solid #e2e8f0;
-            max-height: 800px;
-            overflow-y: auto;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
-        }
-        .stat-card {
-            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-            border: 1px solid #cbd5e1;
-        }
-        .stat-number {
-            font-size: 2em;
-            font-weight: bold;
-            color: #1e40af;
-        }
-        .stat-label {
-            color: #64748b;
-            font-size: 0.9em;
-            margin-top: 5px;
-        }
-        h1 { 
-            color: white; 
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        h2 { 
-            color: #1e40af; 
-            margin-top: 40px; 
-            padding: 15px 20px;
-            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-            border-radius: 10px;
-            border-left: 5px solid #2563eb;
-        }
-        h3 { 
-            color: #1e3a8a; 
-            margin-top: 25px;
-            padding: 10px 15px;
-            background: #f0f9ff;
-            border-radius: 8px;
-            border-left: 3px solid #0284c7;
-        }
-        .highlight { 
-            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); 
-            padding: 20px; 
-            border-right: 5px solid #2563eb; 
-            margin: 20px 0; 
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
-        }
-        .tech-badge {
-            display: inline-block;
-            background: #fef3c7;
-            color: #92400e;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.8em;
-            margin: 2px;
-            border: 1px solid #fcd34d;
-        }
-        .importance-critical { border-left-color: #ef4444 !important; }
-        .importance-high { border-left-color: #f97316 !important; }
-        .importance-medium { border-left-color: #eab308 !important; }
-        .importance-low { border-left-color: #22c55e !important; }
-        @media (max-width: 768px) { 
-            .two-column { grid-template-columns: 1fr; }
-            .container { padding: 20px; }
-            h1 { font-size: 2em; }
-        }
-        .scroll-indicator {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            z-index: 1000;
-        }
-    </style>
-</head>
-<body>
-    <div class="scroll-indicator"></div>
-    <div class="container">
-        <div class="header">
-            <h1>🔍 مراقب فيسبوك المتقدم</h1>
-            <p style="font-size: 1.2em; margin: 0;">دليل المستخدم الشامل مع خريطة الملفات التفصيلية</p>
-            <p style="margin: 10px 0 0 0; opacity: 0.9;">نظام متكامل لمراقبة وتحليل محتوى فيسبوك</p>
-        </div>
-        
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-number">50+</div>
-                <div class="stat-label">ملف ومكون</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">15+</div>
-                <div class="stat-label">خدمة متخصصة</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">200KB+</div>
-                <div class="stat-label">إجمالي الكود</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">10+</div>
-                <div class="stat-label">تقنية حديثة</div>
-            </div>
-        </div>
-        
-        <div class="highlight">
-            <h2>🗂️ خريطة هيكل المشروع التفاعلية المحسنة</h2>
-            <p>يحتوي هذا القسم على شجرة تفصيلية شاملة لجميع ملفات ومجلدات المشروع مع صور مصغرة ووصف تفصيلي لكل عنصر، بما في ذلك الوظائف والتبعيات والتقنيات المستخدمة.</p>
-        </div>
-        
-        <div class="two-column">
-            <div>
-                <h3>🌳 شجرة الملفات التفصيلية</h3>
-                <div class="file-tree">
-                    ${fileTreeHtml}
-                </div>
-            </div>
-            <div>
-                <h3>📖 المحتوى التفصيلي</h3>
-                <div style="max-height: 800px; overflow-y: auto; padding: 20px; background: #f8fafc; border-radius: 10px;">
-                    ${documentationContent
-                      .replace(/\n/g, "<br>")
-                      .replace(/### (.*)/g, "<h4 style='color: #1e3a8a; margin-top: 25px; padding: 10px; background: #f0f9ff; border-radius: 6px;'>$1</h4>")
-                      .replace(/## (.*)/g, "<h3 style='color: #1e40af; margin-top: 30px; padding: 15px; background: #dbeafe; border-radius: 8px;'>$1</h3>")
-                      .replace(/# (.*)/g, "<h2 style='color: #2563eb; margin-top: 35px; padding: 20px; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 10px;'>$1</h2>")}
-                </div>
-            </div>
-        </div>
-        
-        <div style="text-align: center; margin-top: 50px; padding: 30px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 15px; border: 2px solid #cbd5e1;">
-            <h3 style="color: #1e40af; margin-bottom: 15px;">📊 إحصائيات المشروع</h3>
-            <div class="stats-grid">
-                <div>
-                    <strong>تاريخ الإنشاء:</strong><br>
-                    ${new Date().toLocaleDateString('ar-EG')}
-                </div>
-                <div>
-                    <strong>حجم المشروع:</strong><br>
-                    ~200KB من الكود
-                </div>
-                <div>
-                    <strong>عدد التقنيات:</strong><br>
-                    10+ تقنية حديثة
-                </div>
-                <div>
-                    <strong>مستوى التعقيد:</strong><br>
-                    متقدم
-                </div>
-            </div>
-            <p style="color: #64748b; margin-top: 20px; font-style: italic;">تم إنشاء هذا التوثيق الشامل تلقائياً من مراقب فيسبوك المتقدم</p>
-        </div>
-    </div>
-    
-    <script>
-        // مؤشر التمرير
-        window.addEventListener('scroll', () => {
-            const indicator = document.querySelector('.scroll-indicator');
-            const scrolled = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
-            indicator.style.width = scrolled + '%';
-        });
-        
-        // تأثيرات بصرية للبطاقات
-        document.addEventListener('DOMContentLoaded', () => {
-            const cards = document.querySelectorAll('.stat-card');
-            cards.forEach((card, index) => {
-                card.style.animationDelay = (index * 0.1) + 's';
-                card.style.animation = 'fadeInUp 0.6s ease forwards';
-            });
-        });
-    </script>
-    
-    <style>
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-    </style>
-</body>
-</html>
-`
+    const htmlContent = [
+      '<!DOCTYPE html>',
+      '<html dir="rtl" lang="ar">',
+      '<head>',
+      '    <meta charset="UTF-8">',
+      '    <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+      '    <title>مراقب فيسبوك المتقدم - دليل المستخدم الشامل مع خريطة الملفات التفصيلية</title>',
+      '    <link rel="icon" href="data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'.9em\' font-size=\'90\'>🔍</text></svg>">',
+      '    <style>',
+      '        body {',
+      '            font-family: \'Segoe UI\', \'Tahoma\', \'Geneva\', \'Verdana\', sans-serif;',
+      '            line-height: 1.7;',
+      '            margin: 0;',
+      '            padding: 20px;',
+      '            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);',
+      '            min-height: 100vh;',
+      '        }'
+        ',',
+      '        .container {',
+      '            max-width: 1200px;',
+      '            margin: 0 auto;',
+      '            background: white;',
+      '            padding: 40px;',
+      '            border-radius: 20px;',
+      '            box-shadow: 0 20px 40px rgba(0,0,0,0.15);',
+      '        }',
+      '        .header {',
+      '            text-align: center;',
+      '            margin-bottom: 40px;',
+      '            padding: 30px;',
+      '            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);',
+      '            border-radius: 15px;',
+      '            color: white;',
+      '        }',
+      '        h1 { color: white; font-size: 2.5em; margin-bottom: 10px; }',
+      '        h2 { color: #1e40af; margin-top: 40px; padding: 15px 20px; background: #dbeafe; border-radius: 10px; }',
+      '        .file-tree { background: #f8fafc; padding: 25px; border-radius: 15px; border: 2px solid #e2e8f0; }',
+      '        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0; }',
+      '        .stat-card { background: #f1f5f9; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #cbd5e1; }',
+      '        .stat-number { font-size: 2em; font-weight: bold; color: #1e40af; }',
+      '        .stat-label { color: #64748b; font-size: 0.9em; margin-top: 5px; }',
+      '        @media (max-width: 768px) { .container { padding: 20px; } h1 { font-size: 2em; } }',
+      '    </style>',
+      '</head>',
+      '<body>',
+      '    <div class="container">',
+      '        <div class="header">',
+      '            <h1>🔍 مراقب فيسبوك المتقدم</h1>',
+      '            <p style="font-size: 1.2em; margin: 0;">دليل المستخدم الشامل مع خريطة الملفات التفصيلية</p>',
+      '        </div>',
+      '        <div class="stats-grid">',
+      '            <div class="stat-card">',
+      '                <div class="stat-number">50+</div>',
+      '                <div class="stat-label">ملف ومكون</div>',
+      '            </div>',
+      '            <div class="stat-card">',
+      '                <div class="stat-number">15+</div>',
+      '                <div class="stat-label">خدمة متخصصة</div>',
+      '            </div>',
+      '        </div>',
+      '        <h2>🗂️ خريطة هيكل المشروع</h2>',
+      '        <div class="file-tree">',
+      fileTreeHtml,
+      '        </div>',
+      '        <div style="text-align: center; margin-top: 30px; padding: 20px; background: #f1f5f9; border-radius: 10px;">',
+      '            <p style="color: #64748b; font-style: italic;">تم إنشاء هذا التوثيق تلقائياً من مراقب فيسبوك المتقدم</p>',
+      '        </div>',
+      '    </div>',
+      '</body>',
+      '</html>'
+    ].join('\n')
     const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
