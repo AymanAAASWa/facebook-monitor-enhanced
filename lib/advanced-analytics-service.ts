@@ -7,6 +7,7 @@ export interface AdvancedAnalytics {
     totalComments: number
     totalUsers: number
     totalReactions: number
+    totalShares: number
     averageEngagement: number
     engagementRate: number
   }
@@ -163,11 +164,21 @@ export class AdvancedAnalyticsService {
 
   private calculateBasicStats(posts: FacebookPost[]) {
     const totalPosts = posts.length
-    const totalComments = posts.reduce((sum, post) => sum + (post.comments?.data?.length || 0), 0)
+    const totalComments = posts.reduce((sum, post) => {
+      return sum + (post.comments?.summary?.total_count || post.comments?.data?.length || 0)
+    }, 0)
+    
     const totalUsers = new Set(posts.map((post) => post.from?.id).filter(Boolean)).size
-    const totalReactions = posts.reduce((sum, post) => sum + (post.reactions?.summary?.total_count || 0), 0)
+    
+    const totalReactions = posts.reduce((sum, post) => {
+      const reactions = post.reactions?.summary?.total_count || 0
+      const likes = post.likes?.summary?.total_count || 0
+      return sum + reactions + likes
+    }, 0)
+    
+    const totalShares = posts.reduce((sum, post) => sum + (post.shares?.count || 0), 0)
 
-    const averageEngagement = totalPosts > 0 ? (totalComments + totalReactions) / totalPosts : 0
+    const averageEngagement = totalPosts > 0 ? (totalComments + totalReactions + totalShares) / totalPosts : 0
     const engagementRate = totalUsers > 0 ? ((totalComments + totalReactions) / totalUsers) * 100 : 0
 
     return {
@@ -175,6 +186,7 @@ export class AdvancedAnalyticsService {
       totalComments,
       totalUsers,
       totalReactions,
+      totalShares,
       averageEngagement: Math.round(averageEngagement * 100) / 100,
       engagementRate: Math.round(engagementRate * 100) / 100,
     }
@@ -436,7 +448,15 @@ export class AdvancedAnalyticsService {
   }
 
   private analyzeEngagement(posts: FacebookPost[]) {
-    const reactionTypes: { [type: string]: number } = {}
+    const reactionTypes: { [type: string]: number } = {
+      "LIKE": 0,
+      "LOVE": 0,
+      "WOW": 0,
+      "HAHA": 0,
+      "SAD": 0,
+      "ANGRY": 0,
+      "CARE": 0
+    }
     const commentSentiment: { [sentiment: string]: number } = {}
     const shareAnalysis: { [source: string]: number } = {}
     const viralContent: Array<any> = []
@@ -448,6 +468,11 @@ export class AdvancedAnalyticsService {
         post.reactions.data.forEach((reaction: any) => {
           reactionTypes[reaction.type] = (reactionTypes[reaction.type] || 0) + 1
         })
+      }
+      
+      // إضافة الإعجابات العادية
+      if (post.likes?.summary?.total_count) {
+        reactionTypes["LIKE"] += post.likes.summary.total_count
       }
 
       // تحليل مشاعر التعليقات
@@ -461,13 +486,12 @@ export class AdvancedAnalyticsService {
       }
 
       // حساب النقاط الفيروسية
-      const reactions = post.reactions?.summary?.total_count || 0
-      const comments = post.comments?.data?.length || 0
+      const reactions = (post.reactions?.summary?.total_count || 0) + (post.likes?.summary?.total_count || 0)
+      const comments = post.comments?.summary?.total_count || post.comments?.data?.length || 0
       const shares = post.shares?.count || 0
       const viralScore = reactions * 1 + comments * 2 + shares * 3
 
-      if (viralScore > 50) {
-        // عتبة المحتوى الفيروسي
+      if (viralScore > 10) { // خفض العتبة لرؤية المزيد من المحتوى
         viralContent.push({
           postId: post.id,
           content: post.message?.substring(0, 100) || "بدون نص",

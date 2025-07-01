@@ -351,9 +351,9 @@ export function AdvancedAnalyticsDashboard({
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">{text.averageEngagement}</p>
-                    <p className="text-2xl font-bold">{analytics.basic.averageEngagement}</p>
-                    <p className="text-xs text-purple-600">Excellent rate</p>
+                    <p className="text-sm text-gray-500">إجمالي المشاركات</p>
+                    <p className="text-2xl font-bold">{analytics.basic.totalShares || 0}</p>
+                    <p className="text-xs text-purple-600">معدل المشاركة</p>
                   </div>
                   <Target className="w-8 h-8 text-purple-500" />
                 </div>
@@ -490,35 +490,68 @@ export function AdvancedAnalyticsDashboard({
 
         {/* Content Analysis Tab */}
         <TabsContent value="content" className="space-y-6">
-          {/* Sentiment Analysis */}
-          <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageCircle className="w-5 h-5" />
-                Sentiment Analysis
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={sentimentData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percentage }) => `${name} ${percentage.toFixed(1)}%`}
-                  >
-                    {sentimentData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Sentiment Analysis */}
+            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5" />
+                  تحليل المشاعر
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={sentimentData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percentage }) => `${name} ${percentage.toFixed(1)}%`}
+                    >
+                      {sentimentData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Reactions Breakdown */}
+            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Heart className="w-5 h-5" />
+                  توزيع التفاعلات
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {Object.entries(analytics.engagementAnalysis.reactionTypes).map(([type, count], index) => (
+                    <div key={type} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full`} style={{ backgroundColor: colors[index % colors.length] }} />
+                        <span className="text-sm font-medium">
+                          {type === 'LIKE' ? '👍 إعجاب' : 
+                           type === 'LOVE' ? '❤️ حب' : 
+                           type === 'WOW' ? '😮 واو' : 
+                           type === 'HAHA' ? '😂 ضحك' : 
+                           type === 'SAD' ? '😢 حزن' : 
+                           type === 'ANGRY' ? '😡 غضب' : 
+                           type === 'CARE' ? '🤗 اهتمام' : type}
+                        </span>
+                      </div>
+                      <span className="font-bold">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* User Analysis Tab */}
@@ -539,7 +572,41 @@ export function AdvancedAnalyticsDashboard({
 
         {/* Engagement Tab */}
         <TabsContent value="engagement" className="space-y-6">
-          {/* Placeholder for Engagement Data */}
+          {/* Viral Content */}
+          <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                المحتوى الأكثر تفاعلاً
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {analytics.engagementAnalysis.viralContent.map((content, index) => (
+                  <div key={content.postId} className="p-4 border rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <Badge variant="outline" className="bg-purple-50">
+                        <Award className="w-3 h-3 mr-1" />
+                        #{index + 1}
+                      </Badge>
+                      <div className="text-right">
+                        <Badge variant="secondary">{content.viralScore} نقطة</Badge>
+                      </div>
+                    </div>
+                    <p className="text-sm mb-3">{content.content}...</p>
+                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                      <span>👍 {content.reactions}</span>
+                      <span>💬 {content.comments}</span>
+                      <span>🔄 {content.shares}</span>
+                    </div>
+                  </div>
+                ))}
+                {analytics.engagementAnalysis.viralContent.length === 0 && (
+                  <p className="text-center text-gray-500 py-8">لا يوجد محتوى فيروسي حالياً</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Performance Tab */}

@@ -28,21 +28,60 @@ interface FacebookAttachment {
   }
 }
 
-export interface FacebookPost {
+interface FacebookPost {
   id: string
   message?: string
-  created_time: string
+  created_time?: string
   full_picture?: string
-  from: FacebookUser
-  comments?: {
-    data: FacebookComment[]
-    paging?: {
-      next?: string
-      previous?: string
+  attachments?: {
+    data: Array<{
+      type: string
+      url?: string
+      title?: string
+      description?: string
+    }>
+  }
+  from?: {
+    id: string
+    name: string
+  }
+  reactions?: {
+    data: Array<{
+      id: string
+      name: string
+      type: string
+    }>
+    summary: {
+      total_count: number
+      viewer_reaction?: string
     }
   }
-  attachments?: {
-    data: FacebookAttachment[]
+  likes?: {
+    data: Array<{
+      id: string
+      name: string
+    }>
+    summary: {
+      total_count: number
+    }
+  }
+  shares?: {
+    count: number
+  }
+  comments?: {
+    data: Array<{
+      id: string
+      message: string
+      created_time: string
+      from: {
+        id: string
+        name: string
+      }
+      like_count?: number
+    }>
+    summary?: {
+      total_count: number
+    }
   }
 }
 
@@ -128,7 +167,7 @@ export class FacebookService {
   ): Promise<{ data: FacebookPost[]; paging?: any; error?: string }> {
     try {
       let endpoint = `/${sourceId}/posts`
-      
+
       // Try with comments first
       let params: {
         fields: string
@@ -156,21 +195,21 @@ export class FacebookService {
       try {
         console.log(`Making request to Facebook API with fields: ${params.fields}`)
         const response = await this.makeRequest<{ data: FacebookPost[]; paging: any }>(endpoint, params)
-        
+
         if (response.data) {
           console.log(`Successfully fetched ${response.data.length} posts`)
-          
+
           // Log comment counts for debugging
           response.data.forEach((post, index) => {
             const commentCount = post.comments?.data?.length || 0
             console.log(`Post ${index + 1}: ${commentCount} comments`)
           })
-          
+
           return { data: response.data, paging: response.paging }
         }
       } catch (error: any) {
         console.error("Error fetching posts with comments:", error.message)
-        
+
         // If request with comments fails, try to fetch posts separately and then comments
         if (includeComments && (
             error.message.includes("يبدو أنك كنت تسيء استخدام") || 
@@ -178,9 +217,9 @@ export class FacebookService {
             error.message.includes("rate limit") ||
             error.message.includes("permissions")
         )) {
-          
+
           console.log("Trying alternative approach: fetch posts first, then comments...")
-          
+
           try {
             // First get posts without comments
             const basicParams = {
@@ -196,13 +235,13 @@ export class FacebookService {
               ].join(","),
               limit: String(limit),
             }
-            
+
             if (until) {
               basicParams.until = until
             }
-            
+
             const basicResponse = await this.makeRequest<{ data: FacebookPost[]; paging: any }>(endpoint, basicParams)
-            
+
             // Then try to get comments for each post individually
             const postsWithComments = await Promise.all(
               (basicResponse.data || []).map(async (post) => {
@@ -221,13 +260,13 @@ export class FacebookService {
                 }
               })
             )
-            
+
             return { 
               data: postsWithComments, 
               paging: basicResponse.paging,
               error: "تم جلب التعليقات بشكل منفصل"
             }
-            
+
           } catch (retryError) {
             console.error("Alternative approach also failed:", retryError)
             throw retryError
@@ -257,14 +296,14 @@ export class FacebookService {
       if (!response.ok) {
         const errorText = await response.text()
         console.error(`Facebook API Error (${response.status}):`, errorText)
-        
+
         // Check if it's a rate limit error
         if (errorText.includes("يبدو أنك كنت تسيء استخدام") || 
             errorText.includes("368") || 
             response.status === 400) {
           return { data: [], error: "تم الوصول لحد معدل الطلبات" }
         }
-        
+
         throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
 
@@ -272,12 +311,12 @@ export class FacebookService {
 
       if (result.error) {
         console.error("Facebook API returned error:", result.error)
-        
+
         // Handle rate limiting errors gracefully
         if (result.error.code === 368) {
           return { data: [], error: "تم الوصول لحد معدل الطلبات" }
         }
-        
+
         throw new Error(result.error.message)
       }
 
