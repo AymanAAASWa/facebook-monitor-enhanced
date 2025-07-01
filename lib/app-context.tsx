@@ -108,10 +108,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const allPosts: (FacebookPost & { source_id: string; source_name: string })[] = []
 
+      // تحديد المصادر المراد جلب البيانات منها
+      const sourcesToFetch = userSettings.selectedSourceId 
+        ? userSettings.sources.filter(source => source.id === userSettings.selectedSourceId)
+        : userSettings.sources
+
+      console.log(`Fetching data from ${sourcesToFetch.length} source(s)...`)
+
       // Process sources one by one to avoid overwhelming the API
-      for (const source of userSettings.sources) {
+      for (const source of sourcesToFetch) {
         try {
-          console.log(`Fetching posts from ${source.name}...`)
+          console.log(`Fetching posts from ${source.name} (${source.type})...`)
 
           const response = await fetch("/api/facebook/posts", {
             method: "POST",
@@ -120,8 +127,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             },
             body: JSON.stringify({
               sourceId: source.id,
+              sourceType: source.type,
               accessToken: userSettings.accessToken,
-              limit: Math.min(userSettings.monitoring?.maxPosts || 10, 15), // Reduced max limit
+              limit: Math.min(userSettings.monitoring?.maxPosts || 15, 25), // Increased limit for single source
             }),
           })
 
@@ -129,6 +137,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
           if (result.error) {
             console.error(`Error fetching posts from ${source.name}:`, result.error)
+            setError(`خطأ في جلب البيانات من ${source.name}: ${result.error}`)
             // Continue with other sources instead of stopping
             continue
           }
@@ -142,10 +151,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }))
             allPosts.push(...postsWithSource)
             console.log(`Successfully fetched ${result.data.length} posts from ${source.name}`)
+          } else {
+            console.log(`No posts found from ${source.name}`)
           }
 
-          // Add a small delay between requests to avoid rate limiting
-          await new Promise((resolve) => setTimeout(resolve, 1000))
+          // Add a small delay between requests to avoid rate limiting (only if fetching multiple sources)
+          if (sourcesToFetch.length > 1) {
+            await new Promise((resolve) => setTimeout(resolve, 1000))
+          }
         } catch (sourceError) {
           console.error(`Failed to fetch from source ${source.name}:`, sourceError)
           // Continue with other sources

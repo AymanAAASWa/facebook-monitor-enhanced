@@ -368,6 +368,35 @@ export function FacebookMonitor() {
               </div>
             </div>
 
+            {/* Source Selector */}
+            {isSetupComplete && userSettings?.sources && userSettings.sources.length > 0 && (
+              <Select 
+                value={userSettings.selectedSourceId || "all"} 
+                onValueChange={async (value) => {
+                  if (user) {
+                    const updatedSettings = {
+                      ...userSettings,
+                      selectedSourceId: value === "all" ? undefined : value
+                    }
+                    await firebaseService.saveUserSettings(user.uid, updatedSettings)
+                    loadUserSettings()
+                  }
+                }}
+              >
+                <SelectTrigger className="w-48 bg-white/50 backdrop-blur-sm">
+                  <SelectValue placeholder="اختر المصدر" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع المصادر</SelectItem>
+                  {userSettings.sources.map((source) => (
+                    <SelectItem key={source.id} value={source.id}>
+                      {source.type === "group" ? "🏢" : "📄"} {source.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
             {/* Controls */}
             <Button
               variant="outline"
@@ -439,8 +468,46 @@ export function FacebookMonitor() {
                 <CheckCircle className="w-5 h-5" />
                 <span className="font-medium">تم تحميل البيانات بنجاح!</span>
                 <span>
-                  تم العثور على {data.posts.length} منشور من {userSettings?.sources?.length || 1} مصدر
+                  تم العثور على {data.posts.length} منشور
+                  {userSettings?.selectedSourceId ? (
+                    ` من ${userSettings.sources?.find(s => s.id === userSettings.selectedSourceId)?.name || "المصدر المختار"}`
+                  ) : (
+                    ` من ${userSettings?.sources?.length || 1} مصدر`
+                  )}
                 </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Source Selection Info */}
+        {isSetupComplete && userSettings?.selectedSourceId && (
+          <Card className="mb-6 border-blue-200 bg-blue-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-blue-700">
+                <Info className="w-5 h-5" />
+                <span className="font-medium">المصدر المختار:</span>
+                <Badge variant="outline" className="bg-white border-blue-300">
+                  {userSettings.sources?.find(s => s.id === userSettings.selectedSourceId)?.type === "group" ? "🏢" : "📄"}
+                  {userSettings.sources?.find(s => s.id === userSettings.selectedSourceId)?.name}
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    if (user) {
+                      const updatedSettings = {
+                        ...userSettings,
+                        selectedSourceId: undefined
+                      }
+                      await firebaseService.saveUserSettings(user.uid, updatedSettings)
+                      loadUserSettings()
+                    }
+                  }}
+                  className="h-6 text-xs"
+                >
+                  عرض جميع المصادر
+                </Button>
               </div>
             </CardContent>
           </Card>

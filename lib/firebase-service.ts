@@ -15,6 +15,7 @@ export interface UserSettings {
     name: string
     type: "group" | "page"
   }>
+  selectedSourceId?: string  // المصدر المختار حالياً
   keywords: string[]
   notifications: {
     enabled: boolean
@@ -121,6 +122,7 @@ export class FirebaseService {
         const defaultSettings: UserSettings = {
           accessToken: "",
           sources: [],
+          selectedSourceId: undefined,
           keywords: [],
           notifications: {
             enabled: true,

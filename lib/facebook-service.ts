@@ -180,32 +180,42 @@ export class FacebookService {
     includeComments = true,
   ): Promise<{ data: FacebookPost[]; paging?: any; error?: string }> {
     try {
+      console.log(`Starting to fetch posts from ${sourceType} ${sourceId}`)
+      
       let endpoint = `/${sourceId}/posts`
 
-      // Try with comments first
+      // إعداد الحقول المطلوبة حسب نوع المصدر
+      const baseFields = [
+        "id",
+        "message", 
+        "full_picture",
+        "created_time",
+        "updated_time",
+        "from{id,name,picture}",
+        "attachments{media,type,subattachments}",
+        "shares",
+        "reactions.summary(total_count)"
+      ]
+
+      // إضافة التعليقات إذا كان مطلوباً
+      if (includeComments) {
+        baseFields.push("comments.limit(15){id,message,created_time,from{id,name,picture},like_count}")
+      }
+
       let params: {
         fields: string
         limit: string
         until?: string
       } = {
-        fields: [
-          "id",
-          "message",
-          "full_picture",
-          "created_time",
-          "updated_time",
-          "from{id,name,picture}",
-          "attachments{media,type,subattachments}",
-          "shares",
-          "reactions.summary(total_count)",
-          includeComments ? "comments.limit(25){id,message,created_time,from{id,name,picture},like_count,comment_count}" : "",
-        ].filter(Boolean).join(","),
+        fields: baseFields.join(","),
         limit: String(limit),
       }
 
       if (until) {
         params.until = until
       }
+
+      console.log(`Fetching ${sourceType} posts with fields: ${params.fields.substring(0, 100)}...`)
 
       try {
         console.log(`Making request to Facebook API with fields: ${params.fields}`)
