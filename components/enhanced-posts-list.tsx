@@ -1,316 +1,280 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { useState, useCallback, useRef, useEffect } from "react"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
-  Heart,
-  MessageCircle,
-  Share2,
-  ExternalLink,
-  Calendar,
-  User,
-  MapPin,
-  Phone,
-  Search,
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  AlertCircle,
-  CheckCircle,
-  Copy,
-  Download,
-  RefreshCw,
-  Video,
   FileText,
-  Link,
-  Users,
-  TrendingUp,
-  Bookmark,
-  MoreHorizontal,
+  ChevronDown,
+  CheckCircle,
+  Loader2,
+  Search,
+  SortAsc,
+  SortDesc,
+  Eye,
+  EyeOff,
+  Phone,
+  User,
+  ExternalLink,
+  Copy,
+  MessageCircle,
+  Star,
+  ImageIcon,
+  Video,
+  DownloadIcon,
 } from "lucide-react"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import type { FacebookPost } from "@/lib/facebook-service"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import Image from "next/image"
+import type { FacebookPost } from "@/lib/facebook-api-service"
+import { phoneSearchService } from "@/lib/phone-search-service"
+import { enhancedFacebookService } from "@/lib/enhanced-facebook-service"
+import { firebaseEnhancedService } from "@/lib/firebase-enhanced-service"
 
 interface EnhancedPostsListProps {
-  posts: FacebookPost[]
+  posts: Array<FacebookPost & { source_id: string; source_name: string; source_type: string }>
   loading: boolean
   loadingOlder: boolean
   hasMorePosts: boolean
   onLoadOlderPosts: () => void
   darkMode: boolean
   language: "ar" | "en"
-  accessToken: string
 }
 
-interface PostComment {
+interface EnhancedUserRecord {
   id: string
-  message: string
-  created_time: string
-  from: {
-    id: string
-    name: string
-    picture?: {
-      data: {
-        url: string
-      }
-    }
-  }
-  like_count?: number
-  comment_count?: number
-  replies?: PostComment[]
+  name: string
+  phone?: string
+  email?: string
+  picture?: string
+  birthday?: string
+  hometown?: string
+  location?: string
+  about?: string
+  relationship_status?: string
+  religion?: string
+  political?: string
+  website?: string
+  work?: {
+    employer: string
+    position: string
+    start_date?: string
+    end_date?: string
+  }[]
+  education?: {
+    school: string
+    type: string
+    year?: string
+  }[]
+  friends_count?: number
+  posts_count?: number
+  photos_count?: number
+  videos_count?: number
+  source: string
+  source_type: string
+  discovered_date: Date
+  last_updated: Date
+  is_active: boolean
+  tags: string[]
+  category: string
 }
 
 export function EnhancedPostsList({
-  posts,
-  loading,
-  loadingOlder,
-  hasMorePosts,
+  posts = [],
+  loading = false,
+  loadingOlder = false,
+  hasMorePosts = false,
   onLoadOlderPosts,
-  darkMode,
-  language,
-  accessToken,
+  darkMode = false,
+  language = "ar",
 }: EnhancedPostsListProps) {
   const [searchTerm, setSearchTerm] = useState("")
-  const [sortBy, setSortBy] = useState<"date" | "likes" | "comments" | "shares">("date")
-  const [filterBy, setFilterBy] = useState<"all" | "text" | "photo" | "video" | "link">("all")
-  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set())
-  const [showPhoneNumbers, setShowPhoneNumbers] = useState(true)
-  const [postComments, setPostComments] = useState<{ [postId: string]: PostComment[] }>({})
-  const [loadingComments, setLoadingComments] = useState<Set<string>>(new Set())
-  const [commentsExpanded, setCommentsExpanded] = useState<Set<string>>(new Set())
-  const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set())
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list")
+  const [sortBy, setSortBy] = useState<"date" | "comments" | "engagement">("date")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+  const [filterSource, setFilterSource] = useState<string>("all")
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
+  const [searchingPhones, setSearchingPhones] = useState<Set<string>>(new Set())
+  const [phoneSearchResults, setPhoneSearchResults] = useState<{ [key: string]: string }>({})
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [selectedUserId, setSelectedUserId] = useState<string>("")
 
   const t = {
     ar: {
-      searchPlaceholder: "البحث في المنشورات...",
+      noPosts: "لا توجد منشورات للعرض",
+      tryLoading: "جرب تحميل المنشورات أو تغيير كلمة البحث",
+      loadOlderPosts: "تحميل منشورات أقدم",
+      loadingOlder: "جاري تحميل المنشورات الأقدم...",
+      scrollToLoadMore: "مرر لأسفل لتحميل المزيد",
+      noMorePosts: "لا توجد منشورات أقدم",
+      searchPosts: "البحث في المنشورات...",
       sortBy: "ترتيب حسب",
       filterBy: "تصفية حسب",
+      allSources: "جميع المصادر",
       date: "التاريخ",
-      likes: "الإعجابات",
       comments: "التعليقات",
-      shares: "المشاركات",
-      all: "الكل",
-      text: "نص",
-      photo: "صورة",
-      video: "فيديو",
-      link: "رابط",
-      showMore: "عرض المزيد",
-      showLess: "عرض أقل",
-      loadOlderPosts: "تحميل منشورات أقدم",
-      noPostsFound: "لم يتم العثور على منشورات",
-      phoneNumbersFound: "أرقام هواتف مكتشفة",
-      showPhoneNumbers: "إظهار أرقام الهواتف",
-      loadComments: "تحميل التعليقات",
-      hideComments: "إخفاء التعليقات",
-      loadingComments: "جاري تحميل التعليقات...",
-      noComments: "لا توجد تعليقات",
-      reply: "رد",
-      like: "إعجاب",
-      copyText: "نسخ النص",
-      copyLink: "نسخ الرابط",
-      openPost: "فتح المنشور",
-      selectPost: "تحديد المنشور",
-      selectedPosts: "المنشورات المحددة",
-      exportSelected: "تصدير المحدد",
-      viewMode: "وضع العرض",
-      gridView: "شبكة",
-      listView: "قائمة",
-      postType: "نوع المنشور",
       engagement: "التفاعل",
-      author: "الكاتب",
-      source: "المصدر",
-      createdAt: "تاريخ الإنشاء",
-      totalPosts: "إجمالي المنشورات",
-      filteredPosts: "المنشورات المفلترة",
-      averageEngagement: "متوسط التفاعل",
-      topPost: "أفضل منشور",
-      recentPost: "أحدث منشور",
-      bookmark: "حفظ",
-      flag: "إبلاغ",
-      moreOptions: "خيارات أكثر",
+      showComments: "عرض التعليقات",
+      hideComments: "إخفاء التعليقات",
+      noComments: "لا توجد تعليقات",
+      searchPhone: "البحث عن رقم",
+      phoneFound: "تم العثور على الرقم",
+      phoneNotFound: "لم يتم العثور على رقم",
+      phoneSearching: "جاري البحث...",
+      copyPhone: "نسخ الرقم",
+      viewProfile: "عرض الملف الشخصي",
+      openPost: "فتح المنشور",
+      unknown: "غير معروف",
+      group: "جروب",
+      page: "صفحة",
+      downloadImage: "تحميل الصورة",
+      downloadVideo: "تحميل الفيديو",
     },
     en: {
-      searchPlaceholder: "Search posts...",
+      noPosts: "No posts to display",
+      tryLoading: "Try loading posts or change search term",
+      loadOlderPosts: "Load Older Posts",
+      loadingOlder: "Loading older posts...",
+      scrollToLoadMore: "Scroll down to load more",
+      noMorePosts: "No more older posts",
+      searchPosts: "Search posts...",
       sortBy: "Sort by",
       filterBy: "Filter by",
+      allSources: "All Sources",
       date: "Date",
-      likes: "Likes",
       comments: "Comments",
-      shares: "Shares",
-      all: "All",
-      text: "Text",
-      photo: "Photo",
-      video: "Video",
-      link: "Link",
-      showMore: "Show More",
-      showLess: "Show Less",
-      loadOlderPosts: "Load Older Posts",
-      noPostsFound: "No posts found",
-      phoneNumbersFound: "Phone numbers found",
-      showPhoneNumbers: "Show phone numbers",
-      loadComments: "Load Comments",
-      hideComments: "Hide Comments",
-      loadingComments: "Loading comments...",
-      noComments: "No comments",
-      reply: "Reply",
-      like: "Like",
-      copyText: "Copy Text",
-      copyLink: "Copy Link",
-      openPost: "Open Post",
-      selectPost: "Select Post",
-      selectedPosts: "Selected Posts",
-      exportSelected: "Export Selected",
-      viewMode: "View Mode",
-      gridView: "Grid",
-      listView: "List",
-      postType: "Post Type",
       engagement: "Engagement",
-      author: "Author",
-      source: "Source",
-      createdAt: "Created At",
-      totalPosts: "Total Posts",
-      filteredPosts: "Filtered Posts",
-      averageEngagement: "Average Engagement",
-      topPost: "Top Post",
-      recentPost: "Recent Post",
-      bookmark: "Bookmark",
-      flag: "Flag",
-      moreOptions: "More Options",
+      showComments: "Show Comments",
+      hideComments: "Hide Comments",
+      noComments: "No comments",
+      searchPhone: "Search Phone",
+      phoneFound: "Phone Found",
+      phoneNotFound: "Phone Not Found",
+      phoneSearching: "Searching...",
+      copyPhone: "Copy Phone",
+      viewProfile: "View Profile",
+      openPost: "Open Post",
+      unknown: "Unknown",
+      group: "Group",
+      page: "Page",
+      downloadImage: "Download Image",
+      downloadVideo: "Download Video",
     },
   }
 
   const text = t[language]
 
-  // تصفية وترتيب المنشورات
-  const filteredAndSortedPosts = posts
-    .filter((post) => {
-      // تصفية حسب النص
-      const matchesSearch =
-        !searchTerm ||
-        post.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        post.from?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  // تحميل نتائج البحث المحفوظة
+  useEffect(() => {
+    const savedResults = JSON.parse(localStorage.getItem("phone_search_results") || "{}")
+    setPhoneSearchResults(savedResults)
+  }, [])
 
-      // تصفية حسب النوع
-      const matchesFilter =
-        filterBy === "all" ||
-        (filterBy === "text" && post.message && !post.picture && !post.source) ||
-        (filterBy === "photo" && post.picture) ||
-        (filterBy === "video" && post.source && post.source.includes("video")) ||
-        (filterBy === "link" && post.link)
+  const handleScroll = useCallback(() => {
+    if (!scrollContainerRef.current || !posts || posts.length === 0) return
 
-      return matchesSearch && matchesFilter
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "date":
-          return new Date(b.created_time).getTime() - new Date(a.created_time).getTime()
-        case "likes":
-          return (b.likes?.summary?.total_count || 0) - (a.likes?.summary?.total_count || 0)
-        case "comments":
-          return (b.comments?.summary?.total_count || 0) - (a.comments?.summary?.total_count || 0)
-        case "shares":
-          return (b.shares?.count || 0) - (a.shares?.count || 0)
-        default:
-          return 0
-      }
-    })
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current
+    const isNear = scrollTop + clientHeight >= scrollHeight - 1000
 
-  // استخراج أرقام الهواتف من النص - تم إصلاح التعبير النمطي
-  const extractPhoneNumbers = (text: string): string[] => {
-    if (!text) return []
-    // تعبير نمطي محسن لاستخراج أرقام الهواتف
-	const phoneRegex = /(\+?\d{1,4}[-.\s]?)?(\(?\d{1,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,4}/g
+    if (isNear && hasMorePosts && !loadingOlder && posts.length > 0) {
+      onLoadOlderPosts()
+    }
+  }, [hasMorePosts, loadingOlder, posts, onLoadOlderPosts])
 
-    return text.match(phoneRegex) || []
-  }
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (container) {
+      container.addEventListener("scroll", handleScroll)
+      return () => container.removeEventListener("scroll", handleScroll)
+    }
+  }, [handleScroll])
 
-  // تحميل التعليقات
-  const loadPostComments = async (postId: string) => {
-    if (!accessToken) return
+  const handlePhoneSearch = async (userId: string, userName: string) => {
+    if (!phoneSearchService.isReady()) {
+      alert("قاعدة بيانات الأرقام غير محملة. يرجى تحميل ملف الأرقام أولاً.")
+      return
+    }
 
-    setLoadingComments((prev) => new Set([...prev, postId]))
+    setSearchingPhones((prev) => new Set(prev).add(userId))
+    setPhoneSearchResults((prev) => ({ ...prev, [userId]: text.phoneSearching }))
 
     try {
-      const response = await fetch("/api/facebook/comments", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          postId,
-          accessToken,
-        }),
-      })
+      const result = await phoneSearchService.searchPhone(userId)
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
+      if (result.found && result.phone) {
+        setPhoneSearchResults((prev) => ({ ...prev, [userId]: result.phone! }))
 
-      const text = await response.text()
-      if (!text) {
-        throw new Error("Empty response")
+        // حفظ البيانات المحسنة في Firebase
+        await saveEnhancedUserData(userId, userName, result.phone)
+      } else {
+        setPhoneSearchResults((prev) => ({ ...prev, [userId]: text.phoneNotFound }))
       }
-
-      let result
-      try {
-        result = JSON.parse(text)
-      } catch (parseError) {
-        console.error("Failed to parse JSON:", text)
-        throw new Error("Invalid JSON response")
-      }
-
-      if (result.error) {
-        throw new Error(result.error)
-      }
-
-      if (result.data) {
-        setPostComments((prev) => ({
-          ...prev,
-          [postId]: result.data,
-        }))
-      }
-    } catch (error: any) {
-      console.error("Error loading comments:", error)
-      setPostComments((prev) => ({
-        ...prev,
-        [postId]: [],
-      }))
+    } catch (error) {
+      setPhoneSearchResults((prev) => ({ ...prev, [userId]: "خطأ في البحث" }))
     } finally {
-      setLoadingComments((prev) => {
+      setSearchingPhones((prev) => {
         const newSet = new Set(prev)
-        newSet.delete(postId)
+        newSet.delete(userId)
         return newSet
       })
     }
   }
 
-  // تبديل عرض التعليقات
-  const handleToggleComments = async (postId: string) => {
-    if (commentsExpanded.has(postId)) {
-      setCommentsExpanded((prev) => {
-        const newSet = new Set(prev)
-        newSet.delete(postId)
-        return newSet
-      })
-    } else {
-      setCommentsExpanded((prev) => new Set([...prev, postId]))
-      if (!postComments[postId]) {
-        await loadPostComments(postId)
+  // إضافة دالة لحفظ البيانات المحسنة
+  const saveEnhancedUserData = async (userId: string, userName: string, phone?: string) => {
+    try {
+      // جلب البيانات المحسنة من Facebook
+      const userDetails = await enhancedFacebookService.getEnhancedUserInfo(userId)
+
+      if (userDetails.data) {
+        const enhancedUser: EnhancedUserRecord = {
+          id: userId,
+          name: userName,
+          phone: phone,
+          email: userDetails.data.email,
+          picture: userDetails.data.picture?.data?.url,
+          birthday: userDetails.data.birthday,
+          hometown: userDetails.data.hometown?.name,
+          location: userDetails.data.location?.name,
+          about: userDetails.data.about,
+          relationship_status: userDetails.data.relationship_status,
+          religion: userDetails.data.religion,
+          political: userDetails.data.political,
+          website: userDetails.data.website,
+          work: userDetails.data.work?.map((w) => ({
+            employer: w.employer?.name || "",
+            position: w.position?.name || "",
+            start_date: w.start_date,
+            end_date: w.end_date,
+          })),
+          education: userDetails.data.education?.map((e) => ({
+            school: e.school?.name || "",
+            type: e.type || "",
+            year: e.year?.name,
+          })),
+          friends_count: userDetails.data.friends?.data?.length || 0,
+          posts_count: userDetails.data.posts?.data?.length || 0,
+          photos_count: userDetails.data.photos?.data?.length || 0,
+          videos_count: userDetails.data.videos?.data?.length || 0,
+          source: "facebook_monitor",
+          source_type: "user",
+          discovered_date: new Date(),
+          last_updated: new Date(),
+          is_active: true,
+          tags: ["facebook_user"],
+          category: "social_media_user",
+        }
+
+        // حفظ في Firebase
+        await firebaseEnhancedService.saveEnhancedUser(enhancedUser)
       }
+    } catch (error) {
+      console.error("Error saving enhanced user data:", error)
     }
   }
 
-  // تبديل توسيع المنشور
-  const togglePostExpansion = (postId: string) => {
-    setExpandedPosts((prev) => {
+  const handleToggleComments = (postId: string) => {
+    setExpandedComments((prev) => {
       const newSet = new Set(prev)
       if (newSet.has(postId)) {
         newSet.delete(postId)
@@ -321,65 +285,132 @@ export function EnhancedPostsList({
     })
   }
 
-  // تحديد/إلغاء تحديد منشور
-  const togglePostSelection = (postId: string) => {
-    setSelectedPosts((prev) => {
-      const newSet = new Set(prev)
-      if (newSet.has(postId)) {
-        newSet.delete(postId)
-      } else {
-        newSet.add(postId)
-      }
-      return newSet
-    })
-  }
-
-  // نسخ النص
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
   }
 
-  // تصدير المنشورات المحددة
-  const exportSelectedPosts = () => {
-    const selectedPostsData = posts.filter((post) => selectedPosts.has(post.id))
-    const dataStr = JSON.stringify(selectedPostsData, null, 2)
-    const dataBlob = new Blob([dataStr], { type: "application/json" })
-    const url = URL.createObjectURL(dataBlob)
+  const downloadMedia = (url: string, filename: string) => {
     const link = document.createElement("a")
     link.href = url
-    link.download = `selected-posts-${Date.now()}.json`
+    link.download = filename
+    link.target = "_blank"
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    URL.revokeObjectURL(url)
   }
 
-  // حساب الإحصائيات
-  const totalEngagement = filteredAndSortedPosts.reduce(
-    (sum, post) =>
-      sum +
-      (post.likes?.summary?.total_count || 0) +
-      (post.comments?.summary?.total_count || 0) +
-      (post.shares?.count || 0),
-    0,
-  )
-  const averageEngagement = filteredAndSortedPosts.length > 0 ? totalEngagement / filteredAndSortedPosts.length : 0
+  const buildPostUrl = (post: any): string => {
+    if (post.source_type === "group") {
+      return `https://www.facebook.com/groups/${post.source_id}/posts/${post.id.split("_")[1]}/`
+    } else {
+      return `https://www.facebook.com/${post.source_id}/posts/${post.id.split("_")[1]}/`
+    }
+  }
 
-  const topPost = filteredAndSortedPosts.reduce((top, post) => {
-    if (!top) return post
-    const postEngagement =
-      (post.likes?.summary?.total_count || 0) + (post.comments?.summary?.total_count || 0) + (post.shares?.count || 0)
-    const topEngagement =
-      (top.likes?.summary?.total_count || 0) + (top.comments?.summary?.total_count || 0) + (top.shares?.count || 0)
-    return postEngagement > topEngagement ? post : top
-  }, filteredAndSortedPosts[0])
+  const buildUserUrl = (userId: string): string => {
+    return `https://www.facebook.com/${userId}`
+  }
 
-  if (loading && posts.length === 0) {
+  const calculatePostScore = (post: any): number => {
+    let score = 0
+    const message = post.message || ""
+    score += message.length > 100 ? 5 : 2
+    score += (post.comments?.data?.length || 0) * 2
+    if (post.full_picture || post.attachments?.data?.length) score += 5
+    return score
+  }
+
+  const getPostMedia = (post: any) => {
+    const media: Array<{ type: string; url: string; id: string }> = []
+
+    if (post.full_picture) {
+      media.push({
+        type: "image",
+        url: post.full_picture,
+        id: `${post.id}_full_picture`,
+      })
+    }
+
+    if (post.attachments?.data) {
+      post.attachments.data.forEach((attachment: any, index: number) => {
+        if (attachment.type === "photo" && attachment.media?.image?.src) {
+          media.push({
+            type: "image",
+            url: attachment.media.image.src,
+            id: `${post.id}_attachment_${index}`,
+          })
+        } else if (attachment.type === "video_inline" && attachment.media?.source) {
+          media.push({
+            type: "video",
+            url: attachment.media.source,
+            id: `${post.id}_video_${index}`,
+          })
+        }
+
+        if (attachment.subattachments?.data) {
+          attachment.subattachments.data.forEach((subAttachment: any, subIndex: number) => {
+            if (subAttachment.type === "photo" && subAttachment.media?.image?.src) {
+              media.push({
+                type: "image",
+                url: subAttachment.media.image.src,
+                id: `${post.id}_sub_${index}_${subIndex}`,
+              })
+            } else if (subAttachment.type === "video_inline" && subAttachment.media?.source) {
+              media.push({
+                type: "video",
+                url: subAttachment.media.source,
+                id: `${post.id}_sub_video_${index}_${subIndex}`,
+              })
+            }
+          })
+        }
+      })
+    }
+
+    return media
+  }
+
+  // تصفية وترتيب المنشورات
+  const filteredAndSortedPosts = posts
+    .filter((post) => {
+      const matchesSearch =
+        !searchTerm ||
+        post.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        post.from?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        post.source_name?.toLowerCase().includes(searchTerm.toLowerCase())
+
+      const matchesSource = filterSource === "all" || post.source_name === filterSource
+
+      return matchesSearch && matchesSource
+    })
+    .sort((a, b) => {
+      let comparison = 0
+
+      switch (sortBy) {
+        case "date":
+          comparison = new Date(a.created_time).getTime() - new Date(b.created_time).getTime()
+          break
+        case "comments":
+          comparison = (a.comments?.data?.length || 0) - (b.comments?.data?.length || 0)
+          break
+        case "engagement":
+          comparison = calculatePostScore(a) - calculatePostScore(b)
+          break
+      }
+
+      return sortOrder === "desc" ? -comparison : comparison
+    })
+
+  // الحصول على قائمة المصادر الفريدة
+  const uniqueSources = Array.from(new Set(posts.map((post) => post.source_name)))
+
+  if (!posts || (posts.length === 0 && !loading)) {
     return (
-      <Card className={`${darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white/50"} backdrop-blur-sm`}>
+      <Card className={`${darkMode ? "bg-gray-800/90 border-gray-700" : "bg-white/90"} backdrop-blur-sm`}>
         <CardContent className="p-8 text-center">
-          <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin text-blue-500" />
-          <p className="text-lg font-semibold">جاري تحميل المنشورات...</p>
+          <FileText className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+          <h3 className="text-xl font-semibold mb-2">{text.noPosts}</h3>
+          <p className="text-gray-500">{text.tryLoading}</p>
         </CardContent>
       </Card>
     )
@@ -387,462 +418,401 @@ export function EnhancedPostsList({
 
   return (
     <div className="space-y-6">
-      {/* شريط التحكم */}
-      <Card className={`${darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white/50"} backdrop-blur-sm`}>
-        <CardHeader>
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            <div className="flex-1 space-y-4 lg:space-y-0 lg:flex lg:items-center lg:gap-4">
-              {/* البحث */}
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder={text.searchPlaceholder}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-
-              {/* الترتيب والتصفية */}
-              <div className="flex gap-2">
-                <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="date">{text.date}</SelectItem>
-                    <SelectItem value="likes">{text.likes}</SelectItem>
-                    <SelectItem value="comments">{text.comments}</SelectItem>
-                    <SelectItem value="shares">{text.shares}</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={filterBy} onValueChange={(value: any) => setFilterBy(value)}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{text.all}</SelectItem>
-                    <SelectItem value="text">{text.text}</SelectItem>
-                    <SelectItem value="photo">{text.photo}</SelectItem>
-                    <SelectItem value="video">{text.video}</SelectItem>
-                    <SelectItem value="link">{text.link}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+      {/* شريط البحث والتصفية */}
+      <Card className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm`}>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder={text.searchPosts}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
 
-            {/* خيارات العرض */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="show-phones" className="text-sm">
-                  {text.showPhoneNumbers}
-                </Label>
-                <Switch id="show-phones" checked={showPhoneNumbers} onCheckedChange={setShowPhoneNumbers} />
-              </div>
+            <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder={text.sortBy} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">{text.date}</SelectItem>
+                <SelectItem value="comments">{text.comments}</SelectItem>
+                <SelectItem value="engagement">{text.engagement}</SelectItem>
+              </SelectContent>
+            </Select>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={viewMode === "list" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setViewMode("list")}
-                >
-                  <FileText className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "grid" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setViewMode("grid")}
-                >
-                  <Users className="w-4 h-4" />
-                </Button>
-              </div>
+            <Button
+              variant="outline"
+              onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+              className="flex items-center gap-2"
+            >
+              {sortOrder === "asc" ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+              {sortOrder === "asc" ? "تصاعدي" : "تنازلي"}
+            </Button>
 
-              {selectedPosts.size > 0 && (
-                <Button onClick={exportSelectedPosts} variant="outline" size="sm">
-                  <Download className="w-4 h-4 mr-2" />
-                  {text.exportSelected} ({selectedPosts.size})
-                </Button>
-              )}
-            </div>
+            <Select value={filterSource} onValueChange={setFilterSource}>
+              <SelectTrigger>
+                <SelectValue placeholder={text.filterBy} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{text.allSources}</SelectItem>
+                {uniqueSources.map((source) => (
+                  <SelectItem key={source} value={source}>
+                    {source}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </CardHeader>
+
+          <div className="flex items-center justify-between mt-4 text-sm text-gray-500">
+            <span>
+              عرض {filteredAndSortedPosts.length} من {posts.length} منشور
+            </span>
+            {searchTerm && (
+              <Button variant="ghost" size="sm" onClick={() => setSearchTerm("")} className="text-xs">
+                مسح البحث
+              </Button>
+            )}
+          </div>
+        </CardContent>
       </Card>
 
-      {/* الإحصائيات */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card className={`${darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white/50"} backdrop-blur-sm`}>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-blue-600">{posts.length}</div>
-            <div className="text-sm text-gray-500">{text.totalPosts}</div>
-          </CardContent>
-        </Card>
-        <Card className={`${darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white/50"} backdrop-blur-sm`}>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-green-600">{filteredAndSortedPosts.length}</div>
-            <div className="text-sm text-gray-500">{text.filteredPosts}</div>
-          </CardContent>
-        </Card>
-        <Card className={`${darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white/50"} backdrop-blur-sm`}>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-purple-600">{Math.round(averageEngagement)}</div>
-            <div className="text-sm text-gray-500">{text.averageEngagement}</div>
-          </CardContent>
-        </Card>
-        <Card className={`${darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white/50"} backdrop-blur-sm`}>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-orange-600">{selectedPosts.size}</div>
-            <div className="text-sm text-gray-500">{text.selectedPosts}</div>
-          </CardContent>
-        </Card>
-        <Card className={`${darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white/50"} backdrop-blur-sm`}>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-red-600">
-              {posts.reduce((sum, post) => sum + extractPhoneNumbers(post.message || "").length, 0)}
-            </div>
-            <div className="text-sm text-gray-500">{text.phoneNumbersFound}</div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* قائمة المنشورات */}
-      {filteredAndSortedPosts.length === 0 ? (
-        <Card className={`${darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white/50"} backdrop-blur-sm`}>
-          <CardContent className="p-8 text-center">
-            <AlertCircle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-xl font-semibold mb-2">{text.noPostsFound}</h3>
-            <p className="text-gray-500">جرب تغيير معايير البحث أو التصفية</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className={viewMode === "grid" ? "grid grid-cols-1 lg:grid-cols-2 gap-6" : "space-y-6"}>
-          {filteredAndSortedPosts.map((post) => {
-            const isExpanded = expandedPosts.has(post.id)
-            const isSelected = selectedPosts.has(post.id)
-            const phoneNumbers = showPhoneNumbers ? extractPhoneNumbers(post.message || "") : []
-            const commentsVisible = commentsExpanded.has(post.id)
-            const comments = postComments[post.id] || []
-            const isLoadingComments = loadingComments.has(post.id)
-
-            const engagement =
-              (post.likes?.summary?.total_count || 0) +
-              (post.comments?.summary?.total_count || 0) +
-              (post.shares?.count || 0)
-
-            return (
-              <Card
-                key={post.id}
-                className={`${
-                  darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white/50"
-                } backdrop-blur-sm transition-all duration-200 hover:shadow-lg ${
-                  isSelected ? "ring-2 ring-blue-500" : ""
-                }`}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3 flex-1">
-                      <Avatar className="w-12 h-12">
-                        <AvatarImage
-                          src={post.from?.picture?.data?.url || "/placeholder.svg?height=48&width=48&query=user+avatar"}
-                          alt={post.from?.name}
-                        />
-                        <AvatarFallback>
-                          <User className="w-6 h-6" />
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-lg truncate">{post.from?.name}</h3>
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <Calendar className="w-4 h-4" />
-                          <span>
-                            {new Date(post.created_time).toLocaleString(language === "ar" ? "ar-EG" : "en-US")}
-                          </span>
-                          {post.place && (
-                            <>
-                              <MapPin className="w-4 h-4 ml-2" />
-                              <span className="truncate">{post.place.name}</span>
-                            </>
-                          )}
-                        </div>
+      <div
+        ref={scrollContainerRef}
+        className="space-y-6 max-h-screen overflow-y-auto"
+        style={{ maxHeight: "calc(100vh - 400px)" }}
+      >
+        {filteredAndSortedPosts.map((post) => (
+          <Card
+            key={post.id}
+            className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500`}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="relative w-10 h-10 rounded-full overflow-hidden shadow-md">
+                    {post.from?.picture?.data?.url ? (
+                      <Image
+                        src={post.from.picture.data.url || "/placeholder.svg"}
+                        alt={post.from?.name || "User"}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                        {post.from?.name?.charAt(0) || "?"}
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-base">{post.from?.name || text.unknown}</h3>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => togglePostSelection(post.id)}
-                        className={isSelected ? "bg-blue-100 text-blue-600" : ""}
+                        onClick={() => window.open(buildUserUrl(post.from?.id || ""), "_blank")}
+                        className="h-5 w-5 p-0 hover:bg-blue-100"
                       >
-                        <CheckCircle className="w-4 h-4" />
+                        <User className="w-3 h-3" />
                       </Button>
-                      <Button variant="ghost" size="sm">
-                        <Bookmark className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
+                      {post.from?.id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handlePhoneSearch(post.from?.id || "", post.from?.name || "")}
+                          disabled={searchingPhones.has(post.from?.id || "")}
+                          className="h-5 w-5 p-0 hover:bg-green-100"
+                        >
+                          {searchingPhones.has(post.from?.id || "") ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Phone className="w-3 h-3" />
+                          )}
+                        </Button>
+                      )}
+                      {post.from?.id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedUserId(post.from?.id || "")}
+                          className="h-5 w-5 p-0 hover:bg-purple-100"
+                          title="عرض التفاصيل المحسنة"
+                        >
+                          <Eye className="w-3 h-3" />
+                        </Button>
+                      )}
                     </div>
-                  </div>
-                </CardHeader>
+                    <p className="text-xs text-gray-500 mb-1">
+                      {post.created_time
+                        ? new Date(post.created_time).toLocaleString(language === "ar" ? "ar-EG" : "en-US")
+                        : text.unknown}
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200">
+                        {post.source_type === "group" ? text.group : text.page}: {post.source_name}
+                      </Badge>
 
-                <CardContent className="space-y-4">
-                  {/* محتوى المنشور */}
-                  <div className="space-y-3">
-                    {post.message && (
-                      <div className="space-y-2">
-                        <p
-                          className={`text-gray-800 dark:text-gray-200 leading-relaxed ${
-                            !isExpanded && post.message.length > 200 ? "line-clamp-3" : ""
+                      {/* عرض نتيجة البحث عن الرقم */}
+                      {post.from?.id && phoneSearchResults[post.from.id] && (
+                        <Badge
+                          variant="secondary"
+                          className={`text-xs flex items-center gap-1 ${
+                            phoneSearchResults[post.from.id] === text.phoneNotFound ||
+                            phoneSearchResults[post.from.id] === "خطأ في البحث"
+                              ? "bg-red-50 border-red-200 text-red-700"
+                              : phoneSearchResults[post.from.id] === text.phoneSearching
+                                ? "bg-yellow-50 border-yellow-200 text-yellow-700"
+                                : "bg-green-50 border-green-200 text-green-700"
                           }`}
                         >
-                          {post.message}
-                        </p>
-                        {post.message.length > 200 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => togglePostExpansion(post.id)}
-                            className="text-blue-600 hover:text-blue-700 p-0 h-auto"
-                          >
-                            {isExpanded ? (
-                              <>
-                                <ChevronUp className="w-4 h-4 mr-1" />
-                                {text.showLess}
-                              </>
-                            ) : (
-                              <>
-                                <ChevronDown className="w-4 h-4 mr-1" />
-                                {text.showMore}
-                              </>
+                          <Phone className="w-3 h-3" />
+                          {phoneSearchResults[post.from.id]}
+                          {phoneSearchResults[post.from.id] !== text.phoneNotFound &&
+                            phoneSearchResults[post.from.id] !== "خطأ في البحث" &&
+                            phoneSearchResults[post.from.id] !== text.phoneSearching && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => copyToClipboard(phoneSearchResults[post.from.id])}
+                                className="h-4 w-4 p-0 hover:bg-green-200"
+                              >
+                                <Copy className="w-2 h-2" />
+                              </Button>
                             )}
-                          </Button>
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline" className="bg-yellow-50 border-yellow-200 text-xs">
+                    <Star className="w-3 h-3 mr-1 text-yellow-500" />
+                    {calculatePostScore(post)}
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.open(buildPostUrl(post), "_blank")}
+                    className="hover:bg-blue-100 h-6 w-6 p-0"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+
+              {post.message && (
+                <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">{post.message}</p>
+                </div>
+              )}
+
+              {getPostMedia(post).length > 0 && (
+                <div className="mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {getPostMedia(post).map((media) => (
+                      <div key={media.id} className="relative group">
+                        {media.type === "image" ? (
+                          <div className="relative aspect-square rounded-lg overflow-hidden shadow-lg">
+                            <Image
+                              src={media.url || "/placeholder.svg"}
+                              alt="Post image"
+                              fill
+                              className="object-cover hover:scale-105 transition-transform cursor-pointer"
+                              onClick={() => window.open(media.url, "_blank")}
+                            />
+                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => downloadMedia(media.url, `image_${media.id}.jpg`)}
+                                className="bg-white/90 hover:bg-white"
+                              >
+                                <DownloadIcon className="w-3 h-3" />
+                              </Button>
+                            </div>
+                            <div className="absolute bottom-2 left-2">
+                              <Badge variant="secondary" className="bg-white/90">
+                                <ImageIcon className="w-3 h-3 mr-1" />
+                                صورة
+                              </Badge>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="relative aspect-video rounded-lg overflow-hidden shadow-lg bg-black">
+                            <video
+                              src={media.url}
+                              className="w-full h-full object-cover"
+                              controls
+                              poster="/placeholder.svg?height=300&width=400"
+                            />
+                            <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => downloadMedia(media.url, `video_${media.id}.mp4`)}
+                                className="bg-white/90 hover:bg-white"
+                              >
+                                <DownloadIcon className="w-3 h-3" />
+                              </Button>
+                            </div>
+                            <div className="absolute bottom-2 left-2">
+                              <Badge variant="secondary" className="bg-white/90">
+                                <Video className="w-3 h-3 mr-1" />
+                                فيديو
+                              </Badge>
+                            </div>
+                          </div>
                         )}
                       </div>
-                    )}
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                    {/* أرقام الهواتف */}
-                    {phoneNumbers.length > 0 && (
-                      <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Phone className="w-4 h-4 text-yellow-600" />
-                          <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                            {text.phoneNumbersFound}: {phoneNumbers.length}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {phoneNumbers.map((phone, index) => (
-                            <Badge
-                              key={index}
-                              variant="outline"
-                              className="bg-yellow-100 border-yellow-300 text-yellow-800 cursor-pointer hover:bg-yellow-200"
-                              onClick={() => copyToClipboard(phone)}
-                            >
-                              {phone}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
+              {post.comments?.data && post.comments.data.length > 0 ? (
+                <div className="border-t pt-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleToggleComments(post.id)}
+                    className="mb-3 hover:bg-blue-50 text-sm"
+                  >
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    {expandedComments.has(post.id) ? (
+                      <>
+                        <EyeOff className="w-4 h-4 mr-2" />
+                        {text.hideComments}
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-4 h-4 mr-2" />
+                        {text.showComments}
+                      </>
                     )}
+                    <Badge variant="outline" className="ml-2 text-xs">
+                      {post.comments.data.length}
+                    </Badge>
+                  </Button>
 
-                    {/* الوسائط */}
-                    {post.picture && (
-                      <div className="rounded-lg overflow-hidden">
-                        <img
-                          src={post.picture || "/placeholder.svg"}
-                          alt="Post image"
-                          className="w-full h-auto max-h-96 object-cover"
-                          loading="lazy"
-                        />
-                      </div>
-                    )}
-
-                    {post.source && (
-                      <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Video className="w-4 h-4 text-blue-600" />
-                          <span className="text-sm font-medium">فيديو</span>
-                        </div>
-                        <video controls className="w-full rounded">
-                          <source src={post.source} type="video/mp4" />
-                          متصفحك لا يدعم تشغيل الفيديو
-                        </video>
-                      </div>
-                    )}
-
-                    {post.link && (
-                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Link className="w-4 h-4 text-blue-600" />
-                          <span className="text-sm font-medium text-blue-800 dark:text-blue-200">رابط مرفق</span>
-                        </div>
-                        <a
-                          href={post.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-700 text-sm break-all"
+                  {expandedComments.has(post.id) && (
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                      {post.comments.data.map((comment) => (
+                        <div
+                          key={comment.id}
+                          className="flex gap-2 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-600 rounded-lg shadow-sm"
                         >
-                          {post.link}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* إحصائيات التفاعل */}
-                  <div className="flex items-center justify-between pt-3 border-t">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                        <Heart className="w-4 h-4" />
-                        <span className="text-sm">{post.likes?.summary?.total_count || 0}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                        <MessageCircle className="w-4 h-4" />
-                        <span className="text-sm">{post.comments?.summary?.total_count || 0}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                        <Share2 className="w-4 h-4" />
-                        <span className="text-sm">{post.shares?.count || 0}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                        <TrendingUp className="w-4 h-4" />
-                        <span className="text-sm">{engagement}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(post.message || "")}
-                        className="text-gray-600 hover:text-gray-700"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => window.open(`https://facebook.com/${post.id}`, "_blank")}
-                        className="text-gray-600 hover:text-gray-700"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* أزرار التفاعل */}
-                  <div className="flex items-center gap-2 pt-2 border-t">
-                    <Button variant="ghost" size="sm" className="flex-1 justify-center">
-                      <Heart className="w-4 h-4 mr-2" />
-                      {text.like}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex-1 justify-center"
-                      onClick={() => handleToggleComments(post.id)}
-                      disabled={isLoadingComments}
-                    >
-                      {isLoadingComments ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                      )}
-                      {commentsVisible ? text.hideComments : text.loadComments}
-                    </Button>
-                    <Button variant="ghost" size="sm" className="flex-1 justify-center">
-                      <Share2 className="w-4 h-4 mr-2" />
-                      مشاركة
-                    </Button>
-                  </div>
-
-                  {/* التعليقات */}
-                  {commentsVisible && (
-                    <div className="space-y-3 pt-3 border-t">
-                      {isLoadingComments ? (
-                        <div className="text-center py-4">
-                          <Loader2 className="w-6 h-6 mx-auto mb-2 animate-spin text-blue-500" />
-                          <p className="text-sm text-gray-500">{text.loadingComments}</p>
-                        </div>
-                      ) : comments.length === 0 ? (
-                        <div className="text-center py-4">
-                          <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                          <p className="text-sm text-gray-500">{text.noComments}</p>
-                        </div>
-                      ) : (
-                        <ScrollArea className="max-h-96">
-                          <div className="space-y-3">
-                            {comments.map((comment) => (
-                              <div key={comment.id} className="flex gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                <Avatar className="w-8 h-8">
-                                  <AvatarImage
-                                    src={
-                                      comment.from.picture?.data?.url ||
-                                      "/placeholder.svg?height=32&width=32&query=user+avatar" ||
-                                      "/placeholder.svg"
-                                    }
-                                    alt={comment.from.name}
-                                  />
-                                  <AvatarFallback>
-                                    <User className="w-4 h-4" />
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-medium text-sm">{comment.from.name}</span>
-                                    <span className="text-xs text-gray-500">
-                                      {new Date(comment.created_time).toLocaleString(
-                                        language === "ar" ? "ar-EG" : "en-US",
-                                      )}
-                                    </span>
-                                  </div>
-                                  <p className="text-sm text-gray-700 dark:text-gray-300">{comment.message}</p>
-                                  <div className="flex items-center gap-3 mt-2">
-                                    <Button variant="ghost" size="sm" className="text-xs h-6 px-2">
-                                      <Heart className="w-3 h-3 mr-1" />
-                                      {comment.like_count || 0}
-                                    </Button>
-                                    <Button variant="ghost" size="sm" className="text-xs h-6 px-2">
-                                      {text.reply}
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
+                          <div className="relative w-6 h-6 rounded-full overflow-hidden shadow">
+                            <div className="w-full h-full bg-gradient-to-r from-green-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                              {comment.from?.name?.charAt(0) || "?"}
+                            </div>
                           </div>
-                        </ScrollArea>
-                      )}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="font-semibold text-xs">{comment.from?.name || text.unknown}</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => window.open(buildUserUrl(comment.from?.id || ""), "_blank")}
+                                className="h-3 w-3 p-0 hover:bg-blue-100"
+                              >
+                                <User className="w-2 h-2" />
+                              </Button>
+                              {comment.from?.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handlePhoneSearch(comment.from?.id || "", comment.from?.name || "")}
+                                  disabled={searchingPhones.has(comment.from?.id || "")}
+                                  className="h-3 w-3 p-0 hover:bg-green-100"
+                                >
+                                  {searchingPhones.has(comment.from?.id || "") ? (
+                                    <Loader2 className="w-2 h-2 animate-spin" />
+                                  ) : (
+                                    <Phone className="w-2 h-2" />
+                                  )}
+                                </Button>
+                              )}
+                              <span className="text-xs text-gray-500">
+                                {comment.created_time
+                                  ? new Date(comment.created_time).toLocaleString(language === "ar" ? "ar-EG" : "en-US")
+                                  : text.unknown}
+                              </span>
+
+                              {/* عرض رقم التليفون للمعلق */}
+                              {comment.from?.id && phoneSearchResults[comment.from.id] && (
+                                <Badge
+                                  variant="secondary"
+                                  className={`text-xs ${
+                                    phoneSearchResults[comment.from.id] === text.phoneNotFound ||
+                                    phoneSearchResults[comment.from.id] === "خطأ في البحث"
+                                      ? "bg-red-50 border-red-200 text-red-700"
+                                      : phoneSearchResults[comment.from.id] === text.phoneSearching
+                                        ? "bg-yellow-50 border-yellow-200 text-yellow-700"
+                                        : "bg-green-50 border-green-200 text-green-700"
+                                  }`}
+                                >
+                                  {phoneSearchResults[comment.from.id]}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-700 dark:text-gray-300 bg-white/50 dark:bg-gray-800/50 p-2 rounded">
+                              {comment.message || "لا يوجد نص"}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
+                </div>
+              ) : (
+                <div className="border-t pt-3">
+                  <div className="text-center py-3 text-gray-500 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <MessageCircle className="w-6 h-6 mx-auto mb-1 text-gray-400" />
+                    <p className="text-xs">{text.noComments}</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
 
-      {/* زر تحميل المزيد */}
-      {hasMorePosts && (
-        <div className="text-center">
-          <Button
-            onClick={onLoadOlderPosts}
-            disabled={loadingOlder}
-            variant="outline"
-            className="bg-white/50 backdrop-blur-sm"
-          >
+        {/* Load More Button / Infinite Scroll Indicator */}
+        {hasMorePosts && (
+          <div className="flex flex-col items-center gap-4 py-8">
             {loadingOlder ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                جاري التحميل...
-              </>
+              <div className="flex items-center gap-2 text-blue-600">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="text-sm font-medium">{text.loadingOlder}</span>
+              </div>
             ) : (
-              <>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                {text.loadOlderPosts}
-              </>
+              <div className="text-center">
+                <Button
+                  onClick={onLoadOlderPosts}
+                  variant="outline"
+                  className="mb-2 bg-white/50 backdrop-blur-sm hover:bg-white/70"
+                >
+                  <ChevronDown className="w-4 h-4 mr-2" />
+                  {text.loadOlderPosts}
+                </Button>
+                <p className="text-xs text-gray-500">{text.scrollToLoadMore}</p>
+              </div>
             )}
-          </Button>
-        </div>
-      )}
+          </div>
+        )}
+
+        {!hasMorePosts && filteredAndSortedPosts.length > 0 && (
+          <div className="text-center py-8">
+            <div className="inline-flex items-center gap-2 text-gray-500 bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-full">
+              <CheckCircle className="w-4 h-4" />
+              <span className="text-sm">{text.noMorePosts}</span>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

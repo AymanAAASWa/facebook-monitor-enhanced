@@ -1,100 +1,200 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-
-interface UserSettings {
-  accessToken: string
-  pageId: string
-  groupIds: string[]
-  refreshInterval: number
-  autoRefresh: boolean
-  darkMode: boolean
-  language: "ar" | "en"
-  phoneSearchEnabled: boolean
-  enhancedDataCollection: boolean
-  notifications: boolean
-  exportFormat: "json" | "csv" | "xlsx"
-}
+import { createContext, useContext, useState, type ReactNode, useCallback, useEffect } from "react"
+import type { User } from "firebase/auth"
+import type { FacebookPost } from "./facebook-service"
+import { processFacebookData, type AppData } from "./data-processor"
+import { firebaseService, type UserSettings } from "./firebase-service"
 
 interface AppContextType {
-  userSettings: UserSettings
-  updateSettings: (settings: Partial<UserSettings>) => void
-  isAuthenticated: boolean
-  setIsAuthenticated: (authenticated: boolean) => void
-  currentUser: any
-  setCurrentUser: (user: any) => void
-}
-
-const defaultSettings: UserSettings = {
-  accessToken: "",
-  pageId: "",
-  groupIds: [],
-  refreshInterval: 30,
-  autoRefresh: false,
-  darkMode: false,
-  language: "ar",
-  phoneSearchEnabled: true,
-  enhancedDataCollection: true,
-  notifications: true,
-  exportFormat: "json",
+  data: AppData
+  loading: boolean
+  error: string | null
+  user: User | null
+  userSettings: UserSettings | null
+  fetchData: () => Promise<void>
+  setUser: (user: User | null) => void
+  loadUserSettings: () => Promise<void>
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [userSettings, setUserSettings] = useState<UserSettings>(defaultSettings)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [currentUser, setCurrentUser] = useState(null)
+  const [data, setData] = useState<AppData>({
+    posts: [],
+    users: new Map(),
+    analytics: {
+      totalPosts: 0,
+      totalComments: 0,
+      totalUsers: 0,
+      sourceCounts: {},
+      topUsers: [],
+      activityByHour: {},
+      activityByDay: {},
+      mediaStats: { images: 0, videos: 0, totalMedia: 0 },
+    },
+  })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [userSettings, setUserSettings] = useState<UserSettings | null>(null)
 
-  // تحميل الإعدادات من localStorage عند بدء التطبيق
+  // تحميل إعدادات المستخدم من Firebase
+  const loadUserSettings = useCallback(async () => {
+    if (!user) return
+
+    try {
+      const result = await firebaseService.getUserSettings(user.uid)
+      if (result.success && result.data) {
+        setUserSettings(result.data)
+      }
+    } catch (error: any) {
+      console.error("Error loading user settings:", error)
+      setError("خطأ في تحميل إعدادات المستخدم")
+    }
+  }, [user])
+
+  // تحميل إعدادات المستخدم عند تغيير المستخدم
   useEffect(() => {
-    const savedSettings = localStorage.getItem("facebook_monitor_settings")
-    if (savedSettings) {
-      try {
-        const parsed = JSON.parse(savedSettings)
-        setUserSettings({ ...defaultSettings, ...parsed })
-      } catch (error) {
-        console.error("Error loading settings:", error)
-      }
+    if (user) {
+      loadUserSettings()
+    } else {
+      setUserSettings(null)
     }
+  }, [user, loadUserSettings])
 
-    const savedAuth = localStorage.getItem("facebook_monitor_auth")
-    if (savedAuth === "true") {
-      setIsAuthenticated(true)
-    }
+  // مراقبة حالة المصادقة
+  useEffect(() => {
+    const unsubscribe = firebaseService.onAuthStateChange((authUser) => {
+      setUser(authUser)
+    })
 
-    const savedUser = localStorage.getItem("facebook_monitor_user")
-    if (savedUser) {
-      try {
-        setCurrentUser(JSON.parse(savedUser))
-      } catch (error) {
-        console.error("Error loading user:", error)
-      }
-    }
+    return () => unsubscribe()
   }, [])
 
-  const updateSettings = (newSettings: Partial<UserSettings>) => {
-    const updatedSettings = { ...userSettings, ...newSettings }
-    setUserSettings(updatedSettings)
-    localStorage.setItem("facebook_monitor_settings", JSON.stringify(updatedSettings))
-  }
+  const fetchData = useCallback(async () => {
+    if (!user || !userSettings) {
+      setError("يرجى تسجيل الدخول أولاً")
+      return
+    }
 
-  const contextValue: AppContextType = {
-    userSettings,
-    updateSettings,
-    isAuthenticated,
-    setIsAuthenticated: (authenticated: boolean) => {
-      setIsAuthenticated(authenticated)
-      localStorage.setItem("facebook_monitor_auth", authenticated.toString())
-    },
-    currentUser,
-    setCurrentUser: (user: any) => {
-      setCurrentUser(user)
-      localStorage.setItem("facebook_monitor_user", JSON.stringify(user))
-    },
-  }
+    if (!userSettings.accessToken) {
+      setError("يرجى إدخال رمز الوصول (Access Token) في الإعدادات أولاً.")
+      return
+    }
 
-  return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>
+    if (!userSettings.sources || userSettings.sources.length === 0) {
+      setData({
+        posts: [],
+        users: new Map(),
+        analytics: {
+          totalPosts: 0,
+          totalComments: 0,
+          totalUsers: 0,
+          sourceCounts: {},
+          topUsers: [],
+          activityByHour: {},
+          activityByDay: {},
+          mediaStats: { images: 0, videos: 0, totalMedia: 0 },
+        },
+      })
+      setError("يرجى إضافة مصادر (مجموعات أو صفحات) في الإعدادات")
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const allPosts: (FacebookPost & { source_id: string; source_name: string })[] = []
+
+      // Process sources one by one to avoid overwhelming the API
+      for (const source of userSettings.sources) {
+        try {
+          console.log(`Fetching posts from ${source.name}...`)
+
+          const response = await fetch("/api/facebook/posts", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              sourceId: source.id,
+              accessToken: userSettings.accessToken,
+              limit: Math.min(userSettings.monitoring?.maxPosts || 10, 15), // Reduced max limit
+            }),
+          })
+
+          const result = await response.json()
+
+          if (result.error) {
+            console.error(`Error fetching posts from ${source.name}:`, result.error)
+            // Continue with other sources instead of stopping
+            continue
+          }
+
+          if (result.data && result.data.length > 0) {
+            const postsWithSource = result.data.map((p: FacebookPost) => ({
+              ...p,
+              source_id: source.id,
+              source_name: source.name,
+              source_type: source.type,
+            }))
+            allPosts.push(...postsWithSource)
+            console.log(`Successfully fetched ${result.data.length} posts from ${source.name}`)
+          }
+
+          // Add a small delay between requests to avoid rate limiting
+          await new Promise((resolve) => setTimeout(resolve, 1000))
+        } catch (sourceError) {
+          console.error(`Failed to fetch from source ${source.name}:`, sourceError)
+          // Continue with other sources
+          continue
+        }
+      }
+
+      if (allPosts.length === 0) {
+        setError("لم يتم العثور على منشورات من المصادر المحددة. تحقق من صحة المعرفات والصلاحيات.")
+        return
+      }
+
+      const processedData = processFacebookData(allPosts)
+      setData(processedData)
+
+      console.log(`Successfully processed ${allPosts.length} posts from ${userSettings.sources.length} sources`)
+
+      // حفظ المنشورات في Firebase (اختياري)
+      if (allPosts.length > 0) {
+        try {
+          await firebaseService.savePost(user.uid, allPosts, "facebook_api")
+        } catch (saveError) {
+          console.error("Error saving posts to Firebase:", saveError)
+        }
+      }
+    } catch (err: any) {
+      console.error("Data fetch error:", err)
+      setError(err.message || "حدث خطأ أثناء جلب البيانات.")
+    } finally {
+      setLoading(false)
+    }
+  }, [user, userSettings])
+
+  return (
+    <AppContext.Provider
+      value={{
+        data,
+        loading,
+        error,
+        user,
+        userSettings,
+        fetchData,
+        setUser,
+        loadUserSettings,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  )
 }
 
 export function useAppContext() {

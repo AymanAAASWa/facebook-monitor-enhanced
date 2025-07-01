@@ -58,11 +58,7 @@ export interface FacebookLoginResult {
 }
 
 export class FacebookOAuthService {
-  // ==================================================================
-  // ⚙️ هام: استبدل هذا بمعرف التطبيق الخاص بك من Facebook Developers
-  // ⚙️ IMPORTANT: Replace this with your own App ID from Facebook Developers
-  // ==================================================================
-  private appId = "419003153920534"
+  private appId = "419003153920534" // معرف التطبيق الجديد
   private isInitialized = false
   private currentUser: FacebookUser | null = null
   private accessToken: string | null = null
@@ -392,6 +388,51 @@ export class FacebookOAuthService {
 
   isLoggedIn(): boolean {
     return this.currentUser !== null && this.accessToken !== null
+  }
+
+  // دالة للحصول على البيانات التجريبية
+  getTestLoginData(): FacebookLoginResult {
+    const testUser: FacebookUser = {
+      id: "test_user_123",
+      name: "مستخدم تجريبي",
+      email: "test@example.com",
+      picture: {
+        data: {
+          url: "/placeholder.svg?height=100&width=100",
+        },
+      },
+      birthday: "01/01/1990",
+      hometown: { name: "الرياض، السعودية" },
+      location: { name: "جدة، السعودية" },
+      about: "مطور تطبيقات ومهتم بالتكنولوجيا",
+      education: [
+        {
+          school: { name: "جامعة الملك سعود" },
+          type: "College",
+          year: { name: "2015" },
+        },
+      ],
+      work: [
+        {
+          employer: { name: "شركة التقنية المتقدمة" },
+          position: { name: "مطور تطبيقات" },
+          start_date: "2020-01-01",
+        },
+      ],
+      relationship_status: "Single",
+      religion: "Islam",
+      website: "https://example.com",
+    }
+
+    this.currentUser = testUser
+    this.accessToken = "test_access_token_123"
+
+    return {
+      success: true,
+      user: testUser,
+      accessToken: this.accessToken,
+      permissions: this.getAllPermissions(),
+    }
   }
 }
 

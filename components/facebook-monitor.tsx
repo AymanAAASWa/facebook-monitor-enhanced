@@ -1,569 +1,653 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-  Settings,
-  Play,
-  Pause,
-  RefreshCw,
-  Download,
-  Users,
-  MessageSquare,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle,
-  Loader2,
-  Database,
-  Phone,
-  Eye,
-  BarChart3,
-  FileText,
-  Globe,
-} from "lucide-react"
-
+import { useState, useEffect } from "react"
+import { LoginForm } from "./auth/login-form"
+import { FacebookLoginForm } from "./auth/facebook-login-form"
 import { useAppContext } from "@/lib/app-context"
-import { facebookService } from "@/lib/facebook-service"
-import { firebaseService } from "@/lib/firebase-service"
-
-import { SettingsPanel } from "./settings-panel"
 import { EnhancedPostsList } from "./enhanced-posts-list"
+import { SettingsPanel } from "./settings-panel"
 import { AnalyticsDashboard } from "./analytics-dashboard"
+import { AdvancedAnalyticsDashboard } from "./advanced-analytics-dashboard"
 import { UserTable } from "./user-table"
 import { PhoneDatabaseManager } from "./phone-database-manager"
+import { CommentsManager } from "./comments-manager"
+import { MessagesManager } from "./messages-manager"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Settings,
+  BarChart3,
+  Users,
+  FileText,
+  RefreshCw,
+  Moon,
+  Sun,
+  AlertCircle,
+  Database,
+  Phone,
+  LogOut,
+  UserIcon,
+  Cloud,
+  CheckCircle,
+  Info,
+  MessageCircle,
+  Mail,
+  Facebook,
+  Brain,
+  Activity,
+} from "lucide-react"
+import { firebaseService } from "@/lib/firebase-service"
+import { phoneDatabaseService } from "@/lib/phone-database-service"
+import { advancedAnalyticsService } from "@/lib/advanced-analytics-service"
+import { facebookOAuthService, type FacebookLoginResponse } from "@/lib/facebook-oauth-service"
+import type { AutoReplyRule } from "@/lib/facebook-comments-service"
 import { EnhancedDataViewer } from "./enhanced-data-viewer"
 import { AutoCollectionControl } from "./auto-collection-control"
-import { DocumentationExport } from "./documentation-export"
-
-import type { FacebookPost } from "@/lib/facebook-service"
-
-interface MonitoringStats {
-  totalPosts: number
-  totalUsers: number
-  totalComments: number
-  phoneNumbersFound: number
-  lastUpdate: Date
-  isRunning: boolean
-  errors: string[]
-}
 
 export function FacebookMonitor() {
-  const { userSettings, updateSettings, isAuthenticated } = useAppContext()
-  const [posts, setPosts] = useState<FacebookPost[]>([])
-  const [users, setUsers] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
+  const { data, loading, error, user, userSettings, fetchData, setUser, loadUserSettings } = useAppContext()
+  const [darkMode, setDarkMode] = useState(false)
+  const [language, setLanguage] = useState<"ar" | "en">("ar")
   const [loadingOlder, setLoadingOlder] = useState(false)
   const [hasMorePosts, setHasMorePosts] = useState(true)
-  const [error, setError] = useState<string>("")
-  const [success, setSuccess] = useState<string>("")
-  const [stats, setStats] = useState<MonitoringStats>({
-    totalPosts: 0,
-    totalUsers: 0,
-    totalComments: 0,
-    phoneNumbersFound: 0,
-    lastUpdate: new Date(),
-    isRunning: false,
-    errors: [],
-  })
-  const [activeTab, setActiveTab] = useState("posts")
-  const [showSettings, setShowSettings] = useState(false)
-  const [nextPageToken, setNextPageToken] = useState<string>("")
+  const [phoneDbLoaded, setPhoneDbLoaded] = useState(false)
+  const [savedRecords, setSavedRecords] = useState<any[]>([])
+  const [autoReplyRules, setAutoReplyRules] = useState<AutoReplyRule[]>([])
+  const [autoReplyEnabled, setAutoReplyEnabled] = useState(false)
+  const [loginMethod, setLoginMethod] = useState<"firebase" | "facebook">("firebase")
+  const [facebookUser, setFacebookUser] = useState<any>(null)
+  const [advancedAnalytics, setAdvancedAnalytics] = useState<any>(null)
+  const [analyticsView, setAnalyticsView] = useState<"basic" | "advanced">("basic")
+
+  useEffect(() => {
+    if (user) {
+      loadSavedRecords()
+      phoneDatabaseService.loadFromFirebase(user.uid).then((result) => {
+        if (result.success) {
+          setPhoneDbLoaded(true)
+        }
+      })
+    }
+  }, [user])
+
+  useEffect(() => {
+    // حساب التحليلات المتقدمة عند تحديث البيانات
+    if (data.posts && data.posts.length > 0) {
+      const advanced = advancedAnalyticsService.processAdvancedAnalytics(data.posts)
+      setAdvancedAnalytics(advanced)
+    }
+  }, [data.posts])
+
+  const loadSavedRecords = async () => {
+    if (!user) return
+    try {
+      const result = await firebaseService.getPhoneRecords(user.uid)
+      if (result.success && result.data) {
+        setSavedRecords(result.data)
+      }
+    } catch (error) {
+      console.error("Error loading saved records:", error)
+    }
+  }
+
+  const handleFirebaseSignOut = async () => {
+    try {
+      await firebaseService.signOut()
+      setUser(null)
+    } catch (error) {
+      console.error("Error signing out:", error)
+    }
+  }
+
+  const handleFacebookSignOut = async () => {
+    try {
+      await facebookOAuthService.logout()
+      setFacebookUser(null)
+    } catch (error) {
+      console.error("Error signing out from Facebook:", error)
+    }
+  }
+
+  const handleFacebookLogin = async (response: FacebookLoginResponse) => {
+    if (response.success) {
+      setFacebookUser({
+        ...response.userInfo,
+        accessToken: response.accessToken,
+        permissions: response.permissions,
+      })
+
+      // يمكن أيضاً حفظ البيانات في Firebase إذا أردت
+      if (user) {
+        const updatedSettings = {
+          ...userSettings,
+          accessToken: response.accessToken || "",
+          facebookUser: response.userInfo,
+        }
+        await firebaseService.saveUserSettings(user.uid, updatedSettings)
+        loadUserSettings()
+      }
+    }
+  }
+
+  const handleLoadOlderPosts = async () => {
+    setLoadingOlder(true)
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+      setHasMorePosts(false)
+    } catch (error) {
+      console.error("Error loading older posts:", error)
+    } finally {
+      setLoadingOlder(false)
+    }
+  }
 
   const t = {
     ar: {
-      title: "مراقب الفيسبوك المحسن",
-      subtitle: "مراقبة وتحليل المنشورات والتعليقات من الفيسبوك",
+      title: "مراقب فيسبوك المتقدم",
       posts: "المنشورات",
-      users: "المستخدمون",
       analytics: "التحليلات",
+      advancedAnalytics: "التحليلات المتقدمة",
+      users: "المستخدمين",
       settings: "الإعدادات",
-      phoneDatabase: "قاعدة أرقام الهواتف",
-      enhancedData: "البيانات المحسنة",
-      autoCollection: "التجميع التلقائي",
-      documentation: "التوثيق",
-      startMonitoring: "بدء المراقبة",
-      stopMonitoring: "إيقاف المراقبة",
-      refreshData: "تحديث البيانات",
-      exportData: "تصدير البيانات",
+      phoneDb: "قاعدة الأرقام",
+      comments: "التعليقات",
+      messages: "الرسائل",
+      refresh: "تحديث البيانات",
+      darkMode: "الوضع المظلم",
+      lightMode: "الوضع المضيء",
+      language: "English",
       totalPosts: "إجمالي المنشورات",
-      totalUsers: "إجمالي المستخدمين",
-      totalComments: "إجمالي التعليقات",
-      phoneNumbersFound: "أرقام الهواتف المكتشفة",
-      lastUpdate: "آخر تحديث",
-      status: "الحالة",
-      running: "يعمل",
-      stopped: "متوقف",
+      foundNumbers: "الأرقام المكتشفة",
+      activeUsers: "المستخدمين النشطين",
       error: "خطأ",
-      success: "نجح",
-      loadingPosts: "جاري تحميل المنشورات...",
-      noAccessToken: "يرجى إدخال رمز الوصول في الإعدادات",
-      noSourcesConfigured: "يرجى تكوين المصادر في الإعدادات",
-      monitoringStarted: "تم بدء المراقبة بنجاح",
-      monitoringStopped: "تم إيقاف المراقبة",
-      dataRefreshed: "تم تحديث البيانات",
-      errorLoadingPosts: "خطأ في تحميل المنشورات",
-      errorStartingMonitoring: "خطأ في بدء المراقبة",
-      configureSettings: "تكوين الإعدادات",
-      viewAnalytics: "عرض التحليلات",
-      managePhoneDatabase: "إدارة قاعدة أرقام الهواتف",
-      viewEnhancedData: "عرض البيانات المحسنة",
-      setupAutoCollection: "إعداد التجميع التلقائي",
-      exportDocumentation: "تصدير التوثيق",
+      phoneDbStatus: "حالة قاعدة الأرقام",
+      loaded: "محملة",
+      notLoaded: "غير محملة",
+      signOut: "تسجيل الخروج",
+      welcome: "مرحباً",
+      cloudSync: "متزامن مع السحابة",
+      facebookConnected: "متصل بـ Facebook",
+      setupRequired: "يتطلب إعداد",
+      setupMessage: "يرجى إعداد رمز الوصول والمصادر في تبويب الإعدادات",
+      noData: "لا توجد بيانات",
+      loadingSettings: "جاري تحميل الإعدادات...",
+      socialManagement: "إدارة التفاعل الاجتماعي",
+      loginMethod: "طريقة تسجيل الدخول",
+      firebase: "Firebase",
+      facebook: "Facebook",
+      switchLogin: "تغيير طريقة الدخول",
+      analyticsView: "عرض التحليلات",
+      basicAnalytics: "تحليلات أساسية",
+      advancedAnalyticsTitle: "تحليلات متقدمة",
     },
     en: {
-      title: "Enhanced Facebook Monitor",
-      subtitle: "Monitor and analyze Facebook posts and comments",
+      title: "Advanced Facebook Monitor",
       posts: "Posts",
-      users: "Users",
       analytics: "Analytics",
+      advancedAnalytics: "Advanced Analytics",
+      users: "Users",
       settings: "Settings",
-      phoneDatabase: "Phone Database",
-      enhancedData: "Enhanced Data",
-      autoCollection: "Auto Collection",
-      documentation: "Documentation",
-      startMonitoring: "Start Monitoring",
-      stopMonitoring: "Stop Monitoring",
-      refreshData: "Refresh Data",
-      exportData: "Export Data",
+      phoneDb: "Phone Database",
+      comments: "Comments",
+      messages: "Messages",
+      refresh: "Refresh Data",
+      darkMode: "Dark Mode",
+      lightMode: "Light Mode",
+      language: "العربية",
       totalPosts: "Total Posts",
-      totalUsers: "Total Users",
-      totalComments: "Total Comments",
-      phoneNumbersFound: "Phone Numbers Found",
-      lastUpdate: "Last Update",
-      status: "Status",
-      running: "Running",
-      stopped: "Stopped",
+      foundNumbers: "Found Numbers",
+      activeUsers: "Active Users",
       error: "Error",
-      success: "Success",
-      loadingPosts: "Loading posts...",
-      noAccessToken: "Please enter access token in settings",
-      noSourcesConfigured: "Please configure sources in settings",
-      monitoringStarted: "Monitoring started successfully",
-      monitoringStopped: "Monitoring stopped",
-      dataRefreshed: "Data refreshed",
-      errorLoadingPosts: "Error loading posts",
-      errorStartingMonitoring: "Error starting monitoring",
-      configureSettings: "Configure Settings",
-      viewAnalytics: "View Analytics",
-      managePhoneDatabase: "Manage Phone Database",
-      viewEnhancedData: "View Enhanced Data",
-      setupAutoCollection: "Setup Auto Collection",
-      exportDocumentation: "Export Documentation",
+      phoneDbStatus: "Phone DB Status",
+      loaded: "Loaded",
+      notLoaded: "Not Loaded",
+      signOut: "Sign Out",
+      welcome: "Welcome",
+      cloudSync: "Cloud Synced",
+      facebookConnected: "Facebook Connected",
+      setupRequired: "Setup Required",
+      setupMessage: "Please setup access token and sources in Settings tab",
+      noData: "No Data",
+      loadingSettings: "Loading settings...",
+      socialManagement: "Social Management",
+      loginMethod: "Login Method",
+      firebase: "Firebase",
+      facebook: "Facebook",
+      switchLogin: "Switch Login Method",
+      analyticsView: "Analytics View",
+      basicAnalytics: "Basic Analytics",
+      advancedAnalyticsTitle: "Advanced Analytics",
     },
   }
 
-  const text = t[userSettings?.language || "ar"]
+  const text = t[language]
 
-  // تحميل المنشورات
-  const loadPosts = useCallback(
-    async (loadMore = false) => {
-      if (!userSettings?.accessToken) {
-        setError(text.noAccessToken)
-        return
-      }
-
-      if (!userSettings.pageId && userSettings.groupIds.length === 0) {
-        setError(text.noSourcesConfigured)
-        return
-      }
-
-      try {
-        if (loadMore) {
-          setLoadingOlder(true)
-        } else {
-          setLoading(true)
-          setError("")
-        }
-
-        const sources = []
-        if (userSettings.pageId) {
-          sources.push({ id: userSettings.pageId, type: "page" })
-        }
-        userSettings.groupIds.forEach((groupId) => {
-          sources.push({ id: groupId, type: "group" })
-        })
-
-        const result = await facebookService.getPostsFromSources(
-          sources,
-          userSettings.accessToken,
-          loadMore ? nextPageToken : undefined,
-        )
-
-        if (result.success && result.data) {
-          if (loadMore) {
-            setPosts((prev) => [...prev, ...result.data.posts])
-          } else {
-            setPosts(result.data.posts)
-          }
-
-          setNextPageToken(result.data.nextPageToken || "")
-          setHasMorePosts(!!result.data.nextPageToken)
-
-          // تحديث الإحصائيات
-          setStats((prev) => ({
-            ...prev,
-            totalPosts: loadMore ? prev.totalPosts + result.data.posts.length : result.data.posts.length,
-            lastUpdate: new Date(),
-          }))
-
-          // حفظ البيانات في Firebase
-          if (result.data.posts.length > 0) {
-            await firebaseService.savePosts(result.data.posts)
-          }
-
-          if (!loadMore) {
-            setSuccess(text.dataRefreshed)
-            setTimeout(() => setSuccess(""), 3000)
-          }
-        } else {
-          throw new Error(result.error || text.errorLoadingPosts)
-        }
-      } catch (err: any) {
-        console.error("Error loading posts:", err)
-        setError(err.message || text.errorLoadingPosts)
-        setStats((prev) => ({
-          ...prev,
-          errors: [...prev.errors, err.message || text.errorLoadingPosts],
-        }))
-      } finally {
-        setLoading(false)
-        setLoadingOlder(false)
-      }
-    },
-    [userSettings, nextPageToken, text],
-  )
-
-  // بدء المراقبة
-  const startMonitoring = useCallback(async () => {
-    try {
-      setStats((prev) => ({ ...prev, isRunning: true }))
-      await loadPosts()
-      setSuccess(text.monitoringStarted)
-      setTimeout(() => setSuccess(""), 3000)
-    } catch (err: any) {
-      setError(text.errorStartingMonitoring)
-      setStats((prev) => ({ ...prev, isRunning: false }))
-    }
-  }, [loadPosts, text])
-
-  // إيقاف المراقبة
-  const stopMonitoring = useCallback(() => {
-    setStats((prev) => ({ ...prev, isRunning: false }))
-    setSuccess(text.monitoringStopped)
-    setTimeout(() => setSuccess(""), 3000)
-  }, [text])
-
-  // التحديث التلقائي
-  useEffect(() => {
-    let interval: NodeJS.Timeout
-
-    if (stats.isRunning && userSettings?.autoRefresh && userSettings.refreshInterval > 0) {
-      interval = setInterval(() => {
-        loadPosts()
-      }, userSettings.refreshInterval * 1000)
-    }
-
-    return () => {
-      if (interval) {
-        clearInterval(interval)
-      }
-    }
-  }, [stats.isRunning, userSettings?.autoRefresh, userSettings?.refreshInterval, loadPosts])
-
-  // تحميل البيانات عند بدء التطبيق
-  useEffect(() => {
-    if (userSettings?.accessToken && (userSettings.pageId || userSettings.groupIds.length > 0)) {
-      loadPosts()
-    }
-  }, []) // تشغيل مرة واحدة فقط عند التحميل
-
-  // تصدير البيانات
-  const exportData = useCallback(() => {
-    const dataToExport = {
-      posts,
-      users,
-      stats,
-      exportDate: new Date().toISOString(),
-      settings: userSettings,
-    }
-
-    const dataStr = JSON.stringify(dataToExport, null, 2)
-    const dataBlob = new Blob([dataStr], { type: "application/json" })
-    const url = URL.createObjectURL(dataBlob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `facebook-monitor-export-${Date.now()}.json`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }, [posts, users, stats, userSettings])
-
-  if (!isAuthenticated) {
+  // إذا لم يكن المستخدم مسجل دخول، عرض نموذج تسجيل الدخول
+  if (!user && !facebookUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-blue-600">
-              <Globe className="w-8 h-8 mx-auto mb-2" />
-              {text.title}
-            </CardTitle>
-            <p className="text-gray-600">{text.subtitle}</p>
-          </CardHeader>
-          <CardContent>
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>يرجى تسجيل الدخول للمتابعة</AlertDescription>
-            </Alert>
+      <div className="space-y-4">
+        {/* Login Method Selector */}
+        <Card className={`${darkMode ? "bg-gray-800/90 border-gray-700" : "bg-white/90"} backdrop-blur-sm`}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-center gap-4">
+              <span className="text-sm font-medium">{text.loginMethod}:</span>
+              <div className="flex gap-2">
+                <Button
+                  variant={loginMethod === "firebase" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setLoginMethod("firebase")}
+                  className="flex items-center gap-2"
+                >
+                  <Cloud className="w-4 h-4" />
+                  {text.firebase}
+                </Button>
+                <Button
+                  variant={loginMethod === "facebook" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setLoginMethod("facebook")}
+                  className="flex items-center gap-2"
+                >
+                  <Facebook className="w-4 h-4" />
+                  {text.facebook}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Login Forms */}
+        {loginMethod === "firebase" ? (
+          <LoginForm onLogin={setUser} darkMode={darkMode} language={language} />
+        ) : (
+          <FacebookLoginForm onLogin={handleFacebookLogin} darkMode={darkMode} language={language} />
+        )}
+      </div>
+    )
+  }
+
+  // إذا كانت الإعدادات لا تزال تحمل (للمستخدمين Firebase فقط)
+  if (user && !userSettings && !facebookUser) {
+    return (
+      <div
+        className={`min-h-screen flex items-center justify-center ${
+          darkMode
+            ? "bg-gradient-to-br from-gray-900 to-gray-800 text-white"
+            : "bg-gradient-to-br from-blue-50 to-indigo-100 text-gray-900"
+        }`}
+      >
+        <Card className={`${darkMode ? "bg-gray-800/90 border-gray-700" : "bg-white/90"} backdrop-blur-sm`}>
+          <CardContent className="p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-300">{text.loadingSettings}</p>
           </CardContent>
         </Card>
       </div>
     )
   }
 
+  // التحقق من الإعداد المطلوب
+  const currentUser = facebookUser || user
+  const accessToken = facebookUser?.accessToken || userSettings?.accessToken
+  const isSetupComplete = accessToken && (userSettings?.sources?.length > 0 || facebookUser)
+  const foundNumbers = savedRecords.length
+
   return (
     <div
-      className={`min-h-screen ${
-        userSettings?.darkMode ? "dark bg-gray-900" : "bg-gradient-to-br from-blue-50 to-purple-50"
+      className={`min-h-screen transition-colors duration-300 ${
+        darkMode
+          ? "bg-gradient-to-br from-gray-900 to-gray-800 text-white"
+          : "bg-gradient-to-br from-blue-50 to-indigo-100 text-gray-900"
       }`}
     >
-      <div className="container mx-auto p-4 space-y-6">
+      <div className="container mx-auto p-4">
         {/* Header */}
-        <Card
-          className={`${userSettings?.darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white/50"} backdrop-blur-sm`}
-        >
-          <CardHeader>
-            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-              <div>
-                <CardTitle className="text-2xl font-bold text-blue-600 flex items-center gap-2">
-                  <Globe className="w-8 h-8" />
-                  {text.title}
-                </CardTitle>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">{text.subtitle}</p>
-              </div>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                {text.title}
+              </h1>
+              <Badge variant="outline" className="bg-green-50 border-green-200 text-green-700">
+                <Cloud className="w-3 h-3 mr-1" />
+                {text.cloudSync}
+              </Badge>
+              {facebookUser && (
+                <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-700">
+                  <Facebook className="w-3 h-3 mr-1" />
+                  {text.facebookConnected}
+                </Badge>
+              )}
+              {!isSetupComplete && (
+                <Badge variant="outline" className="bg-orange-50 border-orange-200 text-orange-700">
+                  <AlertCircle className="w-3 h-3 mr-1" />
+                  {text.setupRequired}
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-4 flex-wrap">
+              <Badge variant="outline" className="bg-blue-50 border-blue-200">
+                {text.totalPosts}: {data.posts?.length || 0}
+              </Badge>
+              <Badge variant="outline" className="bg-green-50 border-green-200">
+                {text.foundNumbers}: {foundNumbers}
+              </Badge>
+              <Badge variant="outline" className="bg-purple-50 border-purple-200">
+                {text.activeUsers}: {data.analytics?.totalUsers || 0}
+              </Badge>
+              <Badge
+                variant="outline"
+                className={phoneDbLoaded ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}
+              >
+                <Database className="w-3 h-3 mr-1" />
+                {text.phoneDbStatus}: {phoneDbLoaded ? text.loaded : text.notLoaded}
+              </Badge>
+            </div>
+          </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                <Button
-                  onClick={stats.isRunning ? stopMonitoring : startMonitoring}
-                  disabled={loading}
-                  className={stats.isRunning ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
-                >
-                  {loading ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : stats.isRunning ? (
-                    <Pause className="w-4 h-4 mr-2" />
-                  ) : (
-                    <Play className="w-4 h-4 mr-2" />
-                  )}
-                  {stats.isRunning ? text.stopMonitoring : text.startMonitoring}
-                </Button>
-
-                <Button onClick={() => loadPosts()} disabled={loading} variant="outline">
-                  <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-                  {text.refreshData}
-                </Button>
-
-                <Button onClick={exportData} variant="outline">
-                  <Download className="w-4 h-4 mr-2" />
-                  {text.exportData}
-                </Button>
-
-                <Button onClick={() => setShowSettings(!showSettings)} variant="outline">
-                  <Settings className="w-4 h-4 mr-2" />
-                  {text.settings}
-                </Button>
+          <div className="flex items-center gap-3">
+            {/* User Info */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-white/50 dark:bg-gray-800/50 rounded-lg backdrop-blur-sm">
+              <Avatar className="w-8 h-8">
+                {facebookUser?.picture?.data?.url ? (
+                  <AvatarImage src={facebookUser.picture.data.url || "/placeholder.svg"} />
+                ) : (
+                  <AvatarFallback>
+                    <UserIcon className="w-4 h-4" />
+                  </AvatarFallback>
+                )}
+              </Avatar>
+              <div className="text-sm">
+                <p className="font-medium">{text.welcome}</p>
+                <p className="text-xs text-gray-500">{facebookUser?.name || user?.email}</p>
               </div>
             </div>
-          </CardHeader>
-        </Card>
 
-        {/* Status and Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-          <Card
-            className={`${userSettings?.darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white/50"} backdrop-blur-sm`}
-          >
-            <CardContent className="p-4 text-center">
-              <div className="flex items-center justify-center mb-2">
-                {stats.isRunning ? (
-                  <CheckCircle className="w-6 h-6 text-green-500" />
-                ) : (
-                  <AlertCircle className="w-6 h-6 text-gray-400" />
-                )}
-              </div>
-              <div className="text-sm font-medium">{text.status}</div>
-              <div className={`text-xs ${stats.isRunning ? "text-green-600" : "text-gray-500"}`}>
-                {stats.isRunning ? text.running : text.stopped}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className={`${userSettings?.darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white/50"} backdrop-blur-sm`}
-          >
-            <CardContent className="p-4 text-center">
-              <MessageSquare className="w-6 h-6 mx-auto mb-2 text-blue-500" />
-              <div className="text-lg font-bold text-blue-600">{stats.totalPosts}</div>
-              <div className="text-xs text-gray-500">{text.totalPosts}</div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className={`${userSettings?.darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white/50"} backdrop-blur-sm`}
-          >
-            <CardContent className="p-4 text-center">
-              <Users className="w-6 h-6 mx-auto mb-2 text-green-500" />
-              <div className="text-lg font-bold text-green-600">{stats.totalUsers}</div>
-              <div className="text-xs text-gray-500">{text.totalUsers}</div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className={`${userSettings?.darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white/50"} backdrop-blur-sm`}
-          >
-            <CardContent className="p-4 text-center">
-              <TrendingUp className="w-6 h-6 mx-auto mb-2 text-purple-500" />
-              <div className="text-lg font-bold text-purple-600">{stats.totalComments}</div>
-              <div className="text-xs text-gray-500">{text.totalComments}</div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className={`${userSettings?.darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white/50"} backdrop-blur-sm`}
-          >
-            <CardContent className="p-4 text-center">
-              <Phone className="w-6 h-6 mx-auto mb-2 text-orange-500" />
-              <div className="text-lg font-bold text-orange-600">{stats.phoneNumbersFound}</div>
-              <div className="text-xs text-gray-500">{text.phoneNumbersFound}</div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className={`${userSettings?.darkMode ? "bg-gray-800/50 border-gray-700" : "bg-white/50"} backdrop-blur-sm`}
-          >
-            <CardContent className="p-4 text-center">
-              <RefreshCw className="w-6 h-6 mx-auto mb-2 text-gray-500" />
-              <div className="text-xs font-medium">{text.lastUpdate}</div>
-              <div className="text-xs text-gray-500">
-                {stats.lastUpdate.toLocaleTimeString(userSettings?.language === "ar" ? "ar-EG" : "en-US")}
-              </div>
-            </CardContent>
-          </Card>
+            {/* Controls */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLanguage(language === "ar" ? "en" : "ar")}
+              className="bg-white/50 backdrop-blur-sm"
+            >
+              {text.language}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDarkMode(!darkMode)}
+              className="bg-white/50 backdrop-blur-sm"
+            >
+              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
+            <Button
+              onClick={fetchData}
+              disabled={loading || !isSetupComplete}
+              className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+            >
+              {loading ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+              {text.refresh}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={facebookUser ? handleFacebookSignOut : handleFirebaseSignOut}
+              className="bg-red-50 hover:bg-red-100 text-red-600 border-red-200"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              {text.signOut}
+            </Button>
+          </div>
         </div>
 
-        {/* Alerts */}
+        {/* Setup Warning */}
+        {!isSetupComplete && (
+          <Card className="mb-6 border-orange-200 bg-orange-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-orange-700">
+                <Info className="w-5 h-5" />
+                <span className="font-medium">{text.setupRequired}:</span>
+                <span>{text.setupMessage}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Error Display */}
         {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+          <Card className="mb-6 border-red-200 bg-red-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-red-700">
+                <AlertCircle className="w-5 h-5" />
+                <span className="font-medium">{text.error}:</span>
+                <span>{error}</span>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
-        {success && (
-          <Alert className="border-green-200 bg-green-50 text-green-800">
-            <CheckCircle className="h-4 w-4" />
-            <AlertDescription>{success}</AlertDescription>
-          </Alert>
+        {/* Success Message */}
+        {isSetupComplete && data.posts.length > 0 && !error && (
+          <Card className="mb-6 border-green-200 bg-green-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-green-700">
+                <CheckCircle className="w-5 h-5" />
+                <span className="font-medium">تم تحميل البيانات بنجاح!</span>
+                <span>
+                  تم العثور على {data.posts.length} منشور من {userSettings?.sources?.length || 1} مصدر
+                </span>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
-        {/* Settings Panel */}
-        {showSettings && (
-          <SettingsPanel
-            settings={userSettings || {}}
-            onSettingsChange={updateSettings}
-            onClose={() => setShowSettings(false)}
-            darkMode={userSettings?.darkMode || false}
-            language={userSettings?.language || "ar"}
-          />
-        )}
-
-        {/* Main Content Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
+        {/* Main Content */}
+        <Tabs defaultValue={isSetupComplete ? "posts" : "settings"} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-9 bg-white/50 backdrop-blur-sm">
             <TabsTrigger value="posts" className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" />
-              <span className="hidden sm:inline">{text.posts}</span>
-            </TabsTrigger>
-            <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">{text.users}</span>
+              <FileText className="w-4 h-4" />
+              {text.posts}
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
-              <span className="hidden sm:inline">{text.analytics}</span>
+              {text.analytics}
+              {advancedAnalytics && (
+                <Badge variant="outline" className="ml-1 bg-purple-50 border-purple-200 text-purple-700">
+                  <Brain className="w-3 h-3 mr-1" />
+                  AI
+                </Badge>
+              )}
             </TabsTrigger>
-            <TabsTrigger value="phone-database" className="flex items-center gap-2">
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              {text.users}
+            </TabsTrigger>
+            <TabsTrigger value="enhanced" className="flex items-center gap-2">
               <Database className="w-4 h-4" />
-              <span className="hidden sm:inline">{text.phoneDatabase}</span>
+              البيانات المحسنة
+              <Badge variant="outline" className="ml-1 bg-green-50 border-green-200 text-green-700">
+                جديد
+              </Badge>
             </TabsTrigger>
-            <TabsTrigger value="enhanced-data" className="flex items-center gap-2">
-              <Eye className="w-4 h-4" />
-              <span className="hidden sm:inline">{text.enhancedData}</span>
+            <TabsTrigger value="phonedb" className="flex items-center gap-2">
+              <Phone className="w-4 h-4" />
+              {text.phoneDb}
             </TabsTrigger>
-            <TabsTrigger value="auto-collection" className="flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" />
-              <span className="hidden sm:inline">{text.autoCollection}</span>
+            <TabsTrigger value="comments" className="flex items-center gap-2">
+              <MessageCircle className="w-4 h-4" />
+              {text.comments}
             </TabsTrigger>
-            <TabsTrigger value="documentation" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              <span className="hidden sm:inline">{text.documentation}</span>
+            <TabsTrigger value="messages" className="flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              {text.messages}
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              {text.settings}
+              {!isSetupComplete && <AlertCircle className="w-3 h-3 text-orange-500" />}
+            </TabsTrigger>
+            <TabsTrigger value="auto-collect" className="flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              جمع تلقائي
+              <Badge variant="outline" className="ml-1 bg-orange-50 border-orange-200 text-orange-700">
+                AI
+              </Badge>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="posts" className="space-y-4">
+          <TabsContent value="posts">
             <EnhancedPostsList
-              posts={posts}
+              posts={data.posts || []}
               loading={loading}
               loadingOlder={loadingOlder}
               hasMorePosts={hasMorePosts}
-              onLoadOlderPosts={() => loadPosts(true)}
-              darkMode={userSettings?.darkMode || false}
-              language={userSettings?.language || "ar"}
-              accessToken={userSettings?.accessToken || ""}
+              onLoadOlderPosts={handleLoadOlderPosts}
+              darkMode={darkMode}
+              language={language}
             />
           </TabsContent>
 
-          <TabsContent value="users" className="space-y-4">
+          <TabsContent value="analytics">
+            <div className="space-y-6">
+              {/* Analytics View Selector */}
+              {advancedAnalytics && (
+                <Card className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{text.analyticsView}:</span>
+                      <Select value={analyticsView} onValueChange={(value: any) => setAnalyticsView(value)}>
+                        <SelectTrigger className="w-48">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="basic" className="flex items-center gap-2">
+                            <BarChart3 className="w-4 h-4" />
+                            {text.basicAnalytics}
+                          </SelectItem>
+                          <SelectItem value="advanced" className="flex items-center gap-2">
+                            <Brain className="w-4 h-4" />
+                            {text.advancedAnalyticsTitle}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Analytics Content */}
+              {analyticsView === "advanced" && advancedAnalytics ? (
+                <AdvancedAnalyticsDashboard
+                  analytics={advancedAnalytics}
+                  darkMode={darkMode}
+                  language={language}
+                  onExport={() => {
+                    // تصدير التحليلات المتقدمة
+                    const dataStr = JSON.stringify(advancedAnalytics, null, 2)
+                    const dataBlob = new Blob([dataStr], { type: "application/json" })
+                    const url = URL.createObjectURL(dataBlob)
+                    const link = document.createElement("a")
+                    link.href = url
+                    link.download = `advanced-analytics-${Date.now()}.json`
+                    document.body.appendChild(link)
+                    link.click()
+                    document.body.removeChild(link)
+                    URL.revokeObjectURL(url)
+                  }}
+                  onRefresh={fetchData}
+                />
+              ) : (
+                <AnalyticsDashboard data={data.analytics} darkMode={darkMode} language={language} />
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="users">
             <UserTable
-              users={users}
-              darkMode={userSettings?.darkMode || false}
-              language={userSettings?.language || "ar"}
+              users={Array.from(data.users?.values() || [])}
+              phoneSearchResults={{}}
+              onPhoneSearch={() => {}}
+              searchingPhones={new Set()}
+              darkMode={darkMode}
+              language={language}
             />
           </TabsContent>
 
-          <TabsContent value="analytics" className="space-y-4">
-            <AnalyticsDashboard
-              posts={posts}
-              users={users}
-              darkMode={userSettings?.darkMode || false}
-              language={userSettings?.language || "ar"}
-            />
+          <TabsContent value="enhanced">
+            <EnhancedDataViewer darkMode={darkMode} language={language} userId={user?.uid || "facebook_user"} />
           </TabsContent>
 
-          <TabsContent value="phone-database" className="space-y-4">
+          <TabsContent value="phonedb">
             <PhoneDatabaseManager
-              darkMode={userSettings?.darkMode || false}
-              language={userSettings?.language || "ar"}
+              darkMode={darkMode}
+              language={language}
+              userId={user?.uid || "facebook_user"}
+              onDatabaseLoaded={() => setPhoneDbLoaded(true)}
             />
           </TabsContent>
 
-          <TabsContent value="enhanced-data" className="space-y-4">
-            <EnhancedDataViewer darkMode={userSettings?.darkMode || false} language={userSettings?.language || "ar"} />
+          <TabsContent value="comments">
+            {isSetupComplete && (userSettings?.sources?.length > 0 || facebookUser) ? (
+              <CommentsManager
+                pageId={userSettings?.sources?.[0]?.id || facebookUser?.id || ""}
+                accessToken={accessToken}
+                darkMode={darkMode}
+                language={language}
+              />
+            ) : (
+              <Card className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm`}>
+                <CardContent className="p-8 text-center">
+                  <MessageCircle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-xl font-semibold mb-2">إعداد مطلوب</h3>
+                  <p className="text-gray-500">يرجى إعداد رمز الوصول والمصادر في تبويب الإعدادات أولاً</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
-          <TabsContent value="auto-collection" className="space-y-4">
-            <AutoCollectionControl
-              darkMode={userSettings?.darkMode || false}
-              language={userSettings?.language || "ar"}
-              settings={userSettings || {}}
-              onSettingsChange={updateSettings}
+          <TabsContent value="messages">
+            {isSetupComplete && (userSettings?.sources?.length > 0 || facebookUser) ? (
+              <MessagesManager
+                pageId={userSettings?.sources?.[0]?.id || facebookUser?.id || ""}
+                accessToken={accessToken}
+                autoReplyRules={autoReplyRules}
+                autoReplyEnabled={autoReplyEnabled}
+                darkMode={darkMode}
+                language={language}
+              />
+            ) : (
+              <Card className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm`}>
+                <CardContent className="p-8 text-center">
+                  <Mail className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-xl font-semibold mb-2">إعداد مطلوب</h3>
+                  <p className="text-gray-500">يرجى إعداد رمز الوصول والمصادر في تبويب الإعدادات أولاً</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <SettingsPanel
+              onDataRefresh={() => {
+                if (user) {
+                  loadUserSettings().then(() => {
+                    fetchData()
+                  })
+                } else {
+                  fetchData()
+                }
+              }}
+              darkMode={darkMode}
+              language={language}
+              userId={user?.uid || "facebook_user"}
             />
           </TabsContent>
 
-          <TabsContent value="documentation" className="space-y-4">
-            <DocumentationExport darkMode={userSettings?.darkMode || false} language={userSettings?.language || "ar"} />
+          <TabsContent value="auto-collect">
+            <AutoCollectionControl darkMode={darkMode} language={language} />
           </TabsContent>
         </Tabs>
       </div>

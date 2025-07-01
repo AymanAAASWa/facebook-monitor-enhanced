@@ -280,9 +280,3 @@ export class FacebookService {
     }
   }
 }
-
-
-export const facebookService = {
-  getPostsFromSources,
-  // أضف هنا أي دوال أخرى تريد استخدامها
-};
