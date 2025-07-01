@@ -37,6 +37,7 @@ import {
   RefreshCw,
   Star,
   FileText,
+  BarChart3,
 } from "lucide-react"
 import type { AdvancedAnalytics } from "@/lib/advanced-analytics-service"
 import { HTMLExportService } from "@/lib/html-export-service"
