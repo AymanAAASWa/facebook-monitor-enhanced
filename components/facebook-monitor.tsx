@@ -71,15 +71,19 @@ export function FacebookMonitor() {
         }
       })
     }
-  }, [user])
 
-  useEffect(() => {
     // حساب التحليلات المتقدمة عند تحديث البيانات
     if (data.posts && data.posts.length > 0) {
       const advanced = advancedAnalyticsService.processAdvancedAnalytics(data.posts)
       setAdvancedAnalytics(advanced)
     }
-  }, [data.posts])
+
+    // Set access token for services
+    if (userSettings) {
+      facebookCommentsService.setAccessToken(userSettings.accessToken || "")
+      facebookUserAnalyticsService.setAccessToken(userSettings.accessToken || "")
+    }
+  }, [user, data.posts, userSettings])
 
   const loadSavedRecords = async () => {
     if (!user) return
@@ -292,14 +296,6 @@ export function FacebookMonitor() {
   const accessToken = facebookUser?.accessToken || userSettings?.accessToken
   const isSetupComplete = accessToken && (userSettings?.sources?.length > 0 || facebookUser)
   const foundNumbers = savedRecords.length
-
-  useEffect(() => {
-    if (userSettings) {
-      // Set access token for comments service
-      facebookCommentsService.setAccessToken(userSettings.accessToken || "")
-      facebookUserAnalyticsService.setAccessToken(userSettings.accessToken || "")
-    }
-  }, [userSettings])
 
   return (
     <div
