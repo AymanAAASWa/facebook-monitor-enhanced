@@ -1493,6 +1493,8 @@ export function DocumentationExport({ darkMode, language }: DocumentationExportP
       contentDiv.style.direction = 'rtl'
       contentDiv.style.background = 'white'
       
+      const currentDate = new Date().toLocaleDateString('ar-EG')
+      
       const htmlContent = [
         '<div style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px;">',
         '  <h1 style="margin: 0; font-size: 24px;">🔍 مراقب فيسبوك المتقدم</h1>',
@@ -1510,7 +1512,7 @@ export function DocumentationExport({ darkMode, language }: DocumentationExportP
         '  <h3 style="color: #1e40af; margin-bottom: 15px;">📊 إحصائيات المشروع</h3>',
         '  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 15px;">',
         '    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">',
-        `      <strong>تاريخ الإنشاء:</strong><br>${new Date().toLocaleDateString('ar-EG')}`,
+        '      <strong>تاريخ الإنشاء:</strong><br>' + currentDate,
         '    </div>',
         '    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">',
         '      <strong>حجم المشروع:</strong><br>~200KB من الكود',
