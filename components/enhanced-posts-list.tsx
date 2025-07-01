@@ -227,7 +227,8 @@ export function EnhancedPostsList({
   const extractPhoneNumbers = (text: string): string[] => {
     if (!text) return []
     // تعبير نمطي محسن لاستخراج أرقام الهواتف
-    const phoneRegex = /(\+?[0-9]{1,4}[-.\s]?)?($$?[0-9]{1,4}$$?[-.\s]?)?[0-9]{3,4}[-.\s]?[0-9]{3,4}/g
+	const phoneRegex = /(\+?\d{1,4}[-.\s]?)?(\(?\d{1,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,4}/g
+
     return text.match(phoneRegex) || []
   }
 
