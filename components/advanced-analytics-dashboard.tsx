@@ -35,6 +35,7 @@ import {
   Award,
   Download,
   RefreshCw,
+  Star,
 } from "lucide-react"
 import type { AdvancedAnalytics } from "@/lib/advanced-analytics-service"
 
@@ -150,7 +151,7 @@ export function AdvancedAnalyticsDashboard({
       wordCloud: "Word Cloud",
       hashtagAnalysis: "Hashtag Analysis",
       bestPerforming: "Best Performing",
-      worstPerforming: "Worst Performing",
+      worst Performing: "Worst Performing",
       growthPrediction: "Growth Prediction",
       riskAnalysis: "Risk Analysis",
       recommendations: "Recommendations",
@@ -387,27 +388,119 @@ export function AdvancedAnalyticsDashboard({
 
         {/* Time Analysis Tab */}
         <TabsContent value="time" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Hourly Activity */}
-            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
-                  Activity by Hour
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={hourlyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="hour" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#3B82F6" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+          {/* قسم تحليل التفاعلات المحسن */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-blue-500" />
+              إحصائيات التفاعل
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between">
+              <span className="text-sm">إجمالي التفاعلات:</span>
+              <span className="font-bold text-blue-600">{analytics.engagementAnalysis?.totalEngagements || 0}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm">متوسط التفاعل/منشور:</span>
+              <span className="font-bold text-green-600">{analytics.engagementAnalysis?.averageEngagementPerPost || "0.00"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm">المنشورات المتفاعلة:</span>
+              <span className="font-bold text-purple-600">{analytics.engagementAnalysis?.postsWithEngagement || 0}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm">معدل المشاركة:</span>
+              <span className="font-bold text-orange-600">{analytics.engagementAnalysis?.engagementPercentage || "0.0"}%</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Star className="w-5 h-5 text-yellow-500" />
+              أنواع التفاعل
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie
+                  data={Object.entries(analytics.engagementAnalysis?.reactionTypes || {}).map(([type, count]) => ({
+                    name: type === "LIKE" ? "إعجاب" : 
+                          type === "LOVE" ? "حب" :
+                          type === "WOW" ? "إعجاب" :
+                          type === "HAHA" ? "ضحك" :
+                          type === "SAD" ? "حزن" :
+                          type === "ANGRY" ? "غضب" :
+                          type === "CARE" ? "اهتمام" : type,
+                    value: count
+                  })).filter(item => item.value > 0)}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={60}
+                  fill="#8884d8"
+                  dataKey="value"
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                >
+                  {Object.entries(analytics.engagementAnalysis?.reactionTypes || {}).map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart className="w-5 h-5 text-green-500" />
+              توزيع التفاعل
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {Object.entries(analytics.engagementAnalysis?.engagementDistribution || {}).map(([range, count]) => (
+              <div key={range} className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span>{range} تفاعل</span>
+                  <span className="font-semibold">{count} منشور</span>
+                </div>
+                <Progress 
+                  value={analytics.basic?.totalPosts ? (count / analytics.basic.totalPosts) * 100 : 0} 
+                  className="h-2"
+                />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* الشبكة الثانية - الرسوم البيانية */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* نشاط حسب الساعة */}
+        <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              {text.timeAnalysis}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={hourlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="hour" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="count" fill="#3B82F6" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
 
             {/* Daily Activity */}
             <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>

@@ -179,7 +179,8 @@ export class AdvancedAnalyticsService {
     const totalShares = posts.reduce((sum, post) => sum + (post.shares?.count || 0), 0)
 
     const averageEngagement = totalPosts > 0 ? (totalComments + totalReactions + totalShares) / totalPosts : 0
-    const engagementRate = totalPosts > 0 ? ((totalComments + totalReactions) / totalPosts) * 100 : 0
+    // حساب معدل التفاعل كنسبة مئوية صحيحة: إجمالي التفاعلات مقسوم على المنشورات * 100
+    const engagementRate = totalPosts > 0 ? ((totalComments + totalReactions + totalShares) / totalPosts) : 0
 
     return {
       totalPosts,
@@ -466,11 +467,25 @@ export class AdvancedAnalyticsService {
     const shareAnalysis: { [source: string]: number } = {}
     const viralContent: Array<any> = []
     const engagementTrends: Array<any> = []
+    
+    // إحصائيات تفصيلية للتفاعل
+    let totalEngagements = 0
+    let postsWithEngagement = 0
+    const engagementDistribution: { [range: string]: number } = {
+      "0-5": 0,
+      "6-20": 0,
+      "21-50": 0,
+      "51-100": 0,
+      "100+": 0
+    }
 
     posts.forEach((post) => {
-      // تحليل أنواع التفاعل - تحسين الحصول على البيانات
+      let postTotalEngagement = 0
+      
+      // تحليل أنواع التفاعل مع التحسين
+      let postReactions = 0
       if (post.reactions?.summary?.total_count) {
-        // إذا كان لدينا ملخص فقط، نوزع على LIKE افتراضياً
+        postReactions += post.reactions.summary.total_count
         reactionTypes["LIKE"] += post.reactions.summary.total_count
       }
       
@@ -483,7 +498,37 @@ export class AdvancedAnalyticsService {
       
       // إضافة الإعجابات العادية
       if (post.likes?.summary?.total_count) {
+        postReactions += post.likes.summary.total_count
         reactionTypes["LIKE"] += post.likes.summary.total_count
+      }
+
+      // حساب التعليقات
+      const comments = post.comments?.summary?.total_count || post.comments?.data?.length || 0
+      
+      // حساب المشاركات
+      const shares = post.shares?.count || 0
+
+      // إجمالي التفاعل للمنشور
+      postTotalEngagement = postReactions + comments + shares
+      totalEngagements += postTotalEngagement
+
+      if (postTotalEngagement > 0) {
+        postsWithEngagement++
+      }
+
+      // توزيع التفاعل
+      if (postTotalEngagement === 0) {
+        engagementDistribution["0-5"]++
+      } else if (postTotalEngagement <= 5) {
+        engagementDistribution["0-5"]++
+      } else if (postTotalEngagement <= 20) {
+        engagementDistribution["6-20"]++
+      } else if (postTotalEngagement <= 50) {
+        engagementDistribution["21-50"]++
+      } else if (postTotalEngagement <= 100) {
+        engagementDistribution["51-100"]++
+      } else {
+        engagementDistribution["100+"]++
       }
 
       // تحليل مشاعر التعليقات
@@ -496,20 +541,24 @@ export class AdvancedAnalyticsService {
         })
       }
 
-      // حساب النقاط الفيروسية
-      const reactions = (post.reactions?.summary?.total_count || 0) + (post.likes?.summary?.total_count || 0)
-      const comments = post.comments?.summary?.total_count || post.comments?.data?.length || 0
-      const shares = post.shares?.count || 0
-      const viralScore = reactions * 1 + comments * 2 + shares * 3
+      // تحليل المشاركات حسب المصدر
+      if (shares > 0) {
+        const source = "فيسبوك" // يمكن تحسين هذا لاحقاً
+        shareAnalysis[source] = (shareAnalysis[source] || 0) + shares
+      }
 
-      if (viralScore > 10) { // خفض العتبة لرؤية المزيد من المحتوى
+      // حساب النقاط الفيروسية مع تحسين الخوارزمية
+      const viralScore = postReactions * 1 + comments * 2 + shares * 3
+      
+      if (viralScore > 5) { // خفض العتبة أكثر لرؤية المزيد من المحتوى
         viralContent.push({
           postId: post.id,
           content: post.message?.substring(0, 100) || "بدون نص",
           shares,
-          reactions,
+          reactions: postReactions,
           comments,
           viralScore,
+          engagementRate: postTotalEngagement > 0 ? ((postTotalEngagement / 1000) * 100).toFixed(2) : "0.00" // تقدير معدل الوصول
         })
       }
 
@@ -518,21 +567,25 @@ export class AdvancedAnalyticsService {
         const date = new Date(post.created_time).toLocaleDateString("ar-EG")
         const existingTrend = engagementTrends.find((t) => t.date === date)
         if (existingTrend) {
-          existingTrend.likes += reactions
+          existingTrend.likes += postReactions
           existingTrend.comments += comments
           existingTrend.shares += shares
-          existingTrend.total += viralScore
+          existingTrend.total += postTotalEngagement
         } else {
           engagementTrends.push({
             date,
-            likes: reactions,
+            likes: postReactions,
             comments,
             shares,
-            total: viralScore,
+            total: postTotalEngagement,
           })
         }
       }
     })
+
+    // حساب معدل التفاعل الإجمالي
+    const overallEngagementRate = posts.length > 0 ? (totalEngagements / posts.length) : 0
+    const engagementPercentage = posts.length > 0 ? ((postsWithEngagement / posts.length) * 100) : 0
 
     return {
       reactionTypes,
@@ -540,6 +593,14 @@ export class AdvancedAnalyticsService {
       shareAnalysis,
       viralContent: viralContent.sort((a, b) => b.viralScore - a.viralScore).slice(0, 10),
       engagementTrends: engagementTrends.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+      // إحصائيات إضافية
+      totalEngagements,
+      averageEngagementPerPost: overallEngagementRate.toFixed(2),
+      postsWithEngagement,
+      engagementPercentage: engagementPercentage.toFixed(1),
+      engagementDistribution,
+      topReactionType: Object.entries(reactionTypes).reduce((a, b) => reactionTypes[a[0]] > reactionTypes[b[0]] ? a : b)[0],
+      totalReactionTypes: Object.keys(reactionTypes).filter(type => reactionTypes[type] > 0).length
     }
   }
 
