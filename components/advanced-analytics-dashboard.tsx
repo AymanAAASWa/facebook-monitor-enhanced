@@ -36,8 +36,10 @@ import {
   Download,
   RefreshCw,
   Star,
+  FileText,
 } from "lucide-react"
 import type { AdvancedAnalytics } from "@/lib/advanced-analytics-service"
+import { HTMLExportService } from "@/lib/html-export-service"
 
 interface AdvancedAnalyticsDashboardProps {
   analytics: AdvancedAnalytics
@@ -259,10 +261,21 @@ export function AdvancedAnalyticsDashboard({
                 {text.refresh}
               </Button>
 
-              <Button variant="outline" size="sm" onClick={onExport}>
-                <Download className="w-4 h-4 mr-1" />
-                {text.export}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={onExport}>
+                  <Download className="w-4 h-4 mr-1" />
+                  تصدير JSON
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => HTMLExportService.downloadHTMLReport(analytics, 'تقرير-التحليلات-المتقدمة')}
+                  className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                >
+                  <FileText className="w-4 h-4 mr-1" />
+                  تصدير HTML
+                </Button>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -619,30 +632,54 @@ export function AdvancedAnalyticsDashboard({
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Heart className="w-5 h-5" />
-                  توزيع التفاعلات
+                  توزيع التفاعلات - جميع الإيموجي
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {Object.entries(analytics.engagementAnalysis.reactionTypes)
                     .filter(([type, count]) => count > 0)
-                    .map(([type, count], index) => (
-                    <div key={type} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full`} style={{ backgroundColor: colors[index % colors.length] }} />
-                        <span className="text-sm font-medium">
-                          {type === 'LIKE' ? '👍 إعجاب' : 
-                           type === 'LOVE' ? '❤️ حب' : 
-                           type === 'WOW' ? '😮 واو' : 
-                           type === 'HAHA' ? '😂 ضحك' : 
-                           type === 'SAD' ? '😢 حزن' : 
-                           type === 'ANGRY' ? '😡 غضب' : 
-                           type === 'CARE' ? '🤗 اهتمام' : type}
-                        </span>
-                      </div>
-                      <span className="font-bold">{count.toLocaleString()}</span>
-                    </div>
-                  ))}
+                    .sort(([,a], [,b]) => b - a)
+                    .map(([type, count], index) => {
+                      const totalReactions = Object.values(analytics.engagementAnalysis.reactionTypes).reduce((sum, val) => sum + val, 0)
+                      const percentage = totalReactions > 0 ? ((count / totalReactions) * 100).toFixed(1) : '0'
+                      return (
+                        <div key={type} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-4 h-4 rounded-full`} style={{ backgroundColor: colors[index % colors.length] }} />
+                              <span className="text-lg">
+                                {type === 'LIKE' ? '👍' : 
+                                 type === 'LOVE' ? '❤️' : 
+                                 type === 'WOW' ? '😮' : 
+                                 type === 'HAHA' ? '😂' : 
+                                 type === 'SAD' ? '😢' : 
+                                 type === 'ANGRY' ? '😡' : 
+                                 type === 'CARE' ? '🤗' : 
+                                 type === 'THANKFUL' ? '🙏' :
+                                 type === 'PRIDE' ? '🌈' : '👍'}
+                              </span>
+                              <span className="text-sm font-medium">
+                                {type === 'LIKE' ? 'إعجاب' : 
+                                 type === 'LOVE' ? 'حب' : 
+                                 type === 'WOW' ? 'واو' : 
+                                 type === 'HAHA' ? 'ضحك' : 
+                                 type === 'SAD' ? 'حزن' : 
+                                 type === 'ANGRY' ? 'غضب' : 
+                                 type === 'CARE' ? 'اهتمام' : 
+                                 type === 'THANKFUL' ? 'شكر' :
+                                 type === 'PRIDE' ? 'فخر' : type}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-bold">{count.toLocaleString()}</span>
+                              <span className="text-xs text-gray-500 block">{percentage}%</span>
+                            </div>
+                          </div>
+                          <Progress value={parseFloat(percentage)} className="h-2" />
+                        </div>
+                      )
+                    })}
                   {Object.values(analytics.engagementAnalysis.reactionTypes).every(count => count === 0) && (
                     <p className="text-center text-gray-500 py-4">لم يتم العثور على تفاعلات حتى الآن</p>
                   )}
@@ -654,18 +691,161 @@ export function AdvancedAnalyticsDashboard({
 
         {/* User Analysis Tab */}
         <TabsContent value="users" className="space-y-6">
-          {/* Top Users */}
-          <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Top Users
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">{/* Placeholder for Top Users Data */}</div>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Top Users */}
+            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  أكثر المستخدمين نشاطاً
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {analytics.userAnalysis.topUsers.slice(0, 10).map((user, index) => (
+                    <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="bg-blue-50">
+                          #{index + 1}
+                        </Badge>
+                        <div>
+                          <p className="font-medium">{user.name}</p>
+                          <p className="text-xs text-gray-500">معرف: {user.id.substring(0, 10)}...</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-bold">{user.totalActivity} نشاط</div>
+                        <div className="text-xs text-gray-500">
+                          {user.posts} منشور • {user.comments} تعليق
+                        </div>
+                        <Badge variant="secondary" className="mt-1">
+                          تأثير: {user.influence.toFixed(1)}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                  {analytics.userAnalysis.topUsers.length === 0 && (
+                    <p className="text-center text-gray-500 py-8">لا توجد بيانات مستخدمين</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* User Segmentation */}
+            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" />
+                  تصنيف المستخدمين
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>نشط جداً (10+ أنشطة)</span>
+                      <span className="font-bold text-green-600">{analytics.userAnalysis.userSegmentation.highlyActive}</span>
+                    </div>
+                    <Progress value={(analytics.userAnalysis.userSegmentation.highlyActive / (analytics.basic.totalUsers || 1)) * 100} className="h-2" />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>نشط متوسط (3-10 أنشطة)</span>
+                      <span className="font-bold text-blue-600">{analytics.userAnalysis.userSegmentation.moderatelyActive}</span>
+                    </div>
+                    <Progress value={(analytics.userAnalysis.userSegmentation.moderatelyActive / (analytics.basic.totalUsers || 1)) * 100} className="h-2" />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>نشط قليل (1-2 أنشطة)</span>
+                      <span className="font-bold text-orange-600">{analytics.userAnalysis.userSegmentation.lowActivity}</span>
+                    </div>
+                    <Progress value={(analytics.userAnalysis.userSegmentation.lowActivity / (analytics.basic.totalUsers || 1)) * 100} className="h-2" />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>غير نشط</span>
+                      <span className="font-bold text-gray-600">{analytics.userAnalysis.userSegmentation.inactive}</span>
+                    </div>
+                    <Progress value={(analytics.userAnalysis.userSegmentation.inactive / (analytics.basic.totalUsers || 1)) * 100} className="h-2" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Demographics Analysis */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+              <CardHeader>
+                <CardTitle className="text-lg">الفئات العمرية</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={Object.entries(analytics.userAnalysis.demographicAnalysis.ageGroups).map(([age, percentage]) => ({
+                        name: age,
+                        value: percentage
+                      }))}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={60}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, value }) => `${name}: ${value}%`}
+                    >
+                      {Object.entries(analytics.userAnalysis.demographicAnalysis.ageGroups).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+              <CardHeader>
+                <CardTitle className="text-lg">التوزيع الجغرافي</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {Object.entries(analytics.userAnalysis.demographicAnalysis.locations).map(([location, percentage]) => (
+                    <div key={location} className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span>{location}</span>
+                        <span className="font-semibold">{percentage}%</span>
+                      </div>
+                      <Progress value={percentage} className="h-2" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+              <CardHeader>
+                <CardTitle className="text-lg">اللغات</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {Object.entries(analytics.userAnalysis.demographicAnalysis.languages).map(([language, percentage]) => (
+                    <div key={language} className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span>{language}</span>
+                        <span className="font-semibold">{percentage}%</span>
+                      </div>
+                      <Progress value={percentage} className="h-2" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Engagement Tab */}

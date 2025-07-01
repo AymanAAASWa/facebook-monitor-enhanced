@@ -456,7 +456,9 @@ export class AdvancedAnalyticsService {
       "HAHA": 0,
       "SAD": 0,
       "ANGRY": 0,
-      "CARE": 0
+      "CARE": 0,
+      "THANKFUL": 0,
+      "PRIDE": 0
     }
     const commentSentiment: { [sentiment: string]: number } = {
       "positive": 0,
@@ -482,24 +484,30 @@ export class AdvancedAnalyticsService {
     posts.forEach((post) => {
       let postTotalEngagement = 0
       
-      // تحليل أنواع التفاعل مع التحسين
+      // تحليل أنواع التفاعل المحسن مع جميع الإيموجي
       let postReactions = 0
-      if (post.reactions?.summary?.total_count) {
-        postReactions += post.reactions.summary.total_count
-        reactionTypes["LIKE"] += post.reactions.summary.total_count
-      }
       
+      // تحليل التفاعلات التفصيلية
       if (post.reactions?.data && Array.isArray(post.reactions.data)) {
         post.reactions.data.forEach((reaction: any) => {
           const type = reaction.type || "LIKE"
           reactionTypes[type] = (reactionTypes[type] || 0) + 1
+          postReactions++
         })
       }
       
-      // إضافة الإعجابات العادية
+      // إضافة العدد الإجمالي من الـ summary إذا لم تكن البيانات التفصيلية متاحة
+      if (post.reactions?.summary?.total_count && (!post.reactions?.data || post.reactions.data.length === 0)) {
+        const totalReactionCount = post.reactions.summary.total_count
+        reactionTypes["LIKE"] += totalReactionCount // افتراض أن معظمها إعجابات
+        postReactions += totalReactionCount
+      }
+      
+      // إضافة الإعجابات العادية (للمنشورات القديمة)
       if (post.likes?.summary?.total_count) {
-        postReactions += post.likes.summary.total_count
-        reactionTypes["LIKE"] += post.likes.summary.total_count
+        const likesCount = post.likes.summary.total_count
+        reactionTypes["LIKE"] += likesCount
+        postReactions += likesCount
       }
 
       // حساب التعليقات
@@ -644,33 +652,131 @@ export class AdvancedAnalyticsService {
 
   private analyzeTrends(posts: FacebookPost[]) {
     const topicCounts: { [topic: string]: number } = {}
-    const hashtagGrowth: { [hashtag: string]: number[] } = {}
+    const hashtagCounts: { [hashtag: string]: number } = {}
+    const wordFrequency: { [word: string]: number } = {}
+    const monthlyTrends: { [month: string]: number } = {}
 
     posts.forEach((post) => {
       if (post.message) {
-        // استخراج المواضيع (كلمات مفتاحية)
+        // استخراج المواضيع المحسن
         const topics = this.extractTopics(post.message)
         topics.forEach((topic) => {
           topicCounts[topic] = (topicCounts[topic] || 0) + 1
         })
+
+        // استخراج الهاشتاجات
+        const hashtags = post.message.match(/#[\u0600-\u06FF\u0750-\u077F\w]+/g) || []
+        hashtags.forEach((hashtag) => {
+          hashtagCounts[hashtag] = (hashtagCounts[hashtag] || 0) + 1
+        })
+
+        // تحليل الكلمات الشائعة
+        const words = post.message
+          .toLowerCase()
+          .replace(/[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\s]/g, "")
+          .split(/\s+/)
+          .filter((word) => word.length > 3)
+
+        words.forEach((word) => {
+          wordFrequency[word] = (wordFrequency[word] || 0) + 1
+        })
+      }
+
+      // تحليل الاتجاهات الشهرية
+      if (post.created_time) {
+        const month = new Date(post.created_time).toLocaleDateString("ar-EG", { month: "long", year: "numeric" })
+        monthlyTrends[month] = (monthlyTrends[month] || 0) + 1
       }
     })
 
+    // حساب المواضيع الرائجة مع نمو حقيقي
     const trendingTopics = Object.entries(topicCounts)
-      .map(([topic, mentions]) => ({
-        topic,
-        mentions,
-        growth: Math.random() * 100, // نمو تقديري
-      }))
+      .map(([topic, mentions]) => {
+        // حساب النمو بناء على التكرار والحداثة
+        const recentMentions = posts
+          .filter(post => post.created_time && new Date(post.created_time) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+          .filter(post => post.message?.toLowerCase().includes(topic.toLowerCase()))
+          .length
+        
+        const growth = mentions > 1 ? (recentMentions / mentions) * 100 : 0
+        
+        return {
+          topic,
+          mentions,
+          growth: Math.min(growth, 100),
+        }
+      })
       .sort((a, b) => b.mentions - a.mentions)
       .slice(0, 10)
 
+    // الهاشتاجات الناشئة
+    const emergingHashtags = Object.entries(hashtagCounts)
+      .map(([hashtag, count]) => ({
+        hashtag,
+        growth: count > 1 ? (count * 20) : 10, // نمو تقديري بناء على التكرار
+        potential: Math.min(count * 15, 100),
+      }))
+      .sort((a, b) => b.growth - a.growth)
+      .slice(0, 5)
+
+    // اتجاهات المحتوى
+    const contentTrends = [
+      { type: "صور", growth: this.calculateMediaGrowth(posts, "photo"), prediction: 85 },
+      { type: "فيديو", growth: this.calculateMediaGrowth(posts, "video"), prediction: 90 },
+      { type: "نصوص", growth: this.calculateTextGrowth(posts), prediction: 70 },
+      { type: "روابط", growth: this.calculateLinkGrowth(posts), prediction: 60 },
+    ]
+
     return {
       trendingTopics,
-      emergingHashtags: [],
-      contentTrends: [],
-      seasonalTrends: {},
+      emergingHashtags,
+      contentTrends,
+      seasonalTrends: monthlyTrends,
+      wordFrequency: Object.entries(wordFrequency)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 20)
+        .map(([word, count]) => ({ word, count }))
     }
+  }
+
+  private calculateMediaGrowth(posts: FacebookPost[], mediaType: string): number {
+    const recentPosts = posts.filter(post => 
+      post.created_time && new Date(post.created_time) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    )
+    
+    const totalMedia = posts.filter(post => 
+      mediaType === "photo" ? (post.full_picture || post.attachments?.data?.some(att => att.type === "photo")) :
+      mediaType === "video" ? post.attachments?.data?.some(att => att.type === "video_inline") : false
+    ).length
+
+    const recentMedia = recentPosts.filter(post => 
+      mediaType === "photo" ? (post.full_picture || post.attachments?.data?.some(att => att.type === "photo")) :
+      mediaType === "video" ? post.attachments?.data?.some(att => att.type === "video_inline") : false
+    ).length
+
+    return totalMedia > 0 ? (recentMedia / totalMedia) * 100 : 0
+  }
+
+  private calculateTextGrowth(posts: FacebookPost[]): number {
+    const recentPosts = posts.filter(post => 
+      post.created_time && new Date(post.created_time) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    )
+    
+    const textPosts = posts.filter(post => post.message && !post.full_picture && !post.attachments?.data?.length).length
+    const recentTextPosts = recentPosts.filter(post => post.message && !post.full_picture && !post.attachments?.data?.length).length
+
+    return textPosts > 0 ? (recentTextPosts / textPosts) * 100 : 0
+  }
+
+  private calculateLinkGrowth(posts: FacebookPost[]): number {
+    const recentPosts = posts.filter(post => 
+      post.created_time && new Date(post.created_time) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    )
+    
+    const linkPosts = posts.filter(post => post.attachments?.data?.some(att => att.type === "share")).length
+    const recentLinkPosts = recentPosts.filter(post => post.attachments?.data?.some(att => att.type === "share")).length
+
+    return linkPosts > 0 ? (recentLinkPosts / linkPosts) * 100 : 0
   }
 
   private analyzePerformance(posts: FacebookPost[]) {
@@ -786,23 +892,35 @@ export class AdvancedAnalyticsService {
   }
 
   private extractTopics(text: string): string[] {
-    // استخراج المواضيع الرئيسية
-    const commonTopics = [
-      "تكنولوجيا",
-      "رياضة",
-      "طعام",
-      "سفر",
-      "تعليم",
-      "صحة",
-      "أعمال",
-      "ترفيه",
-      "أخبار",
-      "موضة",
-      "فن",
-      "موسيقى",
-    ]
+    // استخراج المواضيع الرئيسية المحسن
+    const topicKeywords = {
+      "تكنولوجيا": ["تكنولوجيا", "تقنية", "برمجة", "كمبيوتر", "هاتف", "تطبيق", "موقع", "إنترنت", "ذكي", "رقمي"],
+      "رياضة": ["رياضة", "كرة", "فوز", "هدف", "مباراة", "بطولة", "لاعب", "تمرين", "جيم", "لياقة"],
+      "طعام": ["طعام", "أكل", "طبخ", "وصفة", "مطعم", "حلويات", "فطار", "غداء", "عشاء", "قهوة"],
+      "سفر": ["سفر", "رحلة", "طيران", "فندق", "سياحة", "عطلة", "بحر", "جبل", "مغامرة", "استكشاف"],
+      "تعليم": ["تعليم", "دراسة", "جامعة", "مدرسة", "كتاب", "امتحان", "تعلم", "دورة", "شهادة", "معرفة"],
+      "صحة": ["صحة", "طب", "دواء", "مرض", "علاج", "طبيب", "مستشفى", "تمرين", "غذاء", "نظافة"],
+      "أعمال": ["عمل", "شركة", "مشروع", "استثمار", "ربح", "مال", "تجارة", "بيع", "شراء", "اقتصاد"],
+      "ترفيه": ["ترفيه", "فيلم", "مسلسل", "لعبة", "نكتة", "مرح", "حفلة", "ضحك", "متعة", "تسلية"],
+      "أخبار": ["خبر", "أخبار", "جديد", "عاجل", "حدث", "صحيفة", "إعلام", "تقرير", "مؤتمر", "بيان"],
+      "موضة": ["موضة", "أزياء", "ملابس", "حذاء", "حقيبة", "مكياج", "جمال", "تسريحة", "عطر", "إكسسوار"],
+      "فن": ["فن", "رسم", "تصوير", "نحت", "معرض", "فنان", "إبداع", "ثقافة", "تراث", "حضارة"],
+      "موسيقى": ["موسيقى", "أغنية", "مطرب", "آلة", "حفل", "نغمة", "صوت", "لحن", "كلمات", "فرقة"],
+      "عائلة": ["عائلة", "أسرة", "أطفال", "أم", "أب", "زوج", "زوجة", "أخ", "أخت", "جد", "جدة"],
+      "حب": ["حب", "حبيب", "زواج", "خطوبة", "رومانسية", "قلب", "عشق", "غرام", "هدية", "ذكرى"],
+      "دين": ["دين", "صلاة", "قرآن", "مسجد", "رمضان", "حج", "عمرة", "دعاء", "ذكر", "تسبيح"]
+    }
 
-    return commonTopics.filter((topic) => text.toLowerCase().includes(topic.toLowerCase()))
+    const foundTopics: string[] = []
+    const textLower = text.toLowerCase()
+
+    Object.entries(topicKeywords).forEach(([topic, keywords]) => {
+      if (keywords.some(keyword => textLower.includes(keyword))) {
+        foundTopics.push(topic)
+      }
+    })
+
+    return foundTopics
   }
 }
 
