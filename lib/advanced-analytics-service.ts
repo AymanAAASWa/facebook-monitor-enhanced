@@ -507,8 +507,8 @@ export class AdvancedAnalyticsService {
       }
       
       // إضافة الإعجابات العادية (للمنشورات القديمة)
-      if (post.likes?.summary?.total_count) {
-        const likesCount = post.likes.summary.total_count
+      if ((post as any).likes?.summary?.total_count) {
+        const likesCount = (post as any).likes.summary.total_count
         reactionTypes["LIKE"] += likesCount
         postReactions += likesCount
       }

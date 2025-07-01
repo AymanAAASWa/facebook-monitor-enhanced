@@ -125,11 +125,33 @@ export class FacebookService {
       const response = await fetch(url.toString())
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error?.message || `Facebook API Error: ${response.status} ${response.statusText}`)
+        const responseText = await response.text()
+        
+        // Check if response is HTML (usually error pages)
+        if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
+          throw new Error(`Facebook API returned HTML error page: ${response.status} ${response.statusText}`)
+        }
+        
+        try {
+          const errorData = JSON.parse(responseText)
+          throw new Error(errorData.error?.message || `Facebook API Error: ${response.status} ${response.statusText}`)
+        } catch (jsonError) {
+          throw new Error(`Facebook API Error: ${response.status} ${response.statusText} - ${responseText.substring(0, 200)}`)
+        }
       }
 
-      return await response.json()
+      const responseText = await response.text()
+      
+      // Check if response is HTML instead of JSON
+      if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
+        throw new Error('Facebook API returned HTML instead of JSON. This may indicate rate limiting or authentication issues.')
+      }
+      
+      try {
+        return JSON.parse(responseText)
+      } catch (jsonError) {
+        throw new Error(`Invalid JSON response from Facebook API: ${responseText.substring(0, 200)}`)
+      }
     } catch (error) {
       if (error instanceof Error) {
         throw error
@@ -290,6 +312,11 @@ export class FacebookService {
       if (!response.ok) {
         const errorText = await response.text()
         console.error(`Facebook API Error (${response.status}):`, errorText)
+
+        // Check if response is HTML (error page)
+        if (errorText.startsWith('<!DOCTYPE') || errorText.startsWith('<html')) {
+          return { data: [], error: "Facebook API returned error page - possibly rate limited" }
+        }
 
         // Check if it's a rate limit error
         if (errorText.includes("يبدو أنك كنت تسيء استخدام") || 
