@@ -1,4 +1,4 @@
-{
+npm run devnpm run dev --legacy-peer-deps{
   "$schema": "https://ui.shadcn.com/schema.json",
   "style": "default",
   "rsc": true,
@@ -18,4 +18,17 @@
     "hooks": "@/hooks"
   },
   "iconLibrary": "lucide"
-}
+}{
+  "name": "my-v0-project",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^13.0.0",
+    "react": "^17.0.0",
+    "react-dom": "^17.0.0"
+  }
+}npm install next react react-domnpm run dev
