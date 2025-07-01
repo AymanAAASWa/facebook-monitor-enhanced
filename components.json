@@ -1,4 +1,4 @@
-npm run devnpm run dev --legacy-peer-deps{
+npm install nextyarn add nextnpm run devnpm run dev --legacy-peer-deps{
   "$schema": "https://ui.shadcn.com/schema.json",
   "style": "default",
   "rsc": true,
