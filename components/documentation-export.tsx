@@ -1380,89 +1380,81 @@ export function DocumentationExport({ darkMode, language }: DocumentationExportP
 
   const exportAsHtml = () => {
     const fileTreeHtml = generateEnhancedFileTreeHtml(projectStructure)
+    const currentDate = new Date().toLocaleDateString('ar-EG')
     
-    const htmlContent = `
-<!DOCTYPE html>
+    const htmlContent = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مراقب فيسبوك المتقدم - دليل المستخدم الشامل مع خريطة الملفات التفصيلية</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>"></head_str>
-<new_str>  const exportAsHtml = () => {
-    const fileTreeHtml = generateEnhancedFileTreeHtml(projectStructure)
-    
-    const htmlContent = [
-      '<!DOCTYPE html>',
-      '<html dir="rtl" lang="ar">',
-      '<head>',
-      '    <meta charset="UTF-8">',
-      '    <meta name="viewport" content="width=device-width, initial-scale=1.0">',
-      '    <title>مراقب فيسبوك المتقدم - دليل المستخدم الشامل مع خريطة الملفات التفصيلية</title>',
-      '    <link rel="icon" href="data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'.9em\' font-size=\'90\'>🔍</text></svg>">',
-      '    <style>',
-      '        body {',
-      '            font-family: \'Segoe UI\', \'Tahoma\', \'Geneva\', \'Verdana\', sans-serif;',
-      '            line-height: 1.7;',
-      '            margin: 0;',
-      '            padding: 20px;',
-      '            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);',
-      '            min-height: 100vh;',
-      '        }'
-        ',',
-      '        .container {',
-      '            max-width: 1200px;',
-      '            margin: 0 auto;',
-      '            background: white;',
-      '            padding: 40px;',
-      '            border-radius: 20px;',
-      '            box-shadow: 0 20px 40px rgba(0,0,0,0.15);',
-      '        }',
-      '        .header {',
-      '            text-align: center;',
-      '            margin-bottom: 40px;',
-      '            padding: 30px;',
-      '            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);',
-      '            border-radius: 15px;',
-      '            color: white;',
-      '        }',
-      '        h1 { color: white; font-size: 2.5em; margin-bottom: 10px; }',
-      '        h2 { color: #1e40af; margin-top: 40px; padding: 15px 20px; background: #dbeafe; border-radius: 10px; }',
-      '        .file-tree { background: #f8fafc; padding: 25px; border-radius: 15px; border: 2px solid #e2e8f0; }',
-      '        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0; }',
-      '        .stat-card { background: #f1f5f9; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #cbd5e1; }',
-      '        .stat-number { font-size: 2em; font-weight: bold; color: #1e40af; }',
-      '        .stat-label { color: #64748b; font-size: 0.9em; margin-top: 5px; }',
-      '        @media (max-width: 768px) { .container { padding: 20px; } h1 { font-size: 2em; } }',
-      '    </style>',
-      '</head>',
-      '<body>',
-      '    <div class="container">',
-      '        <div class="header">',
-      '            <h1>🔍 مراقب فيسبوك المتقدم</h1>',
-      '            <p style="font-size: 1.2em; margin: 0;">دليل المستخدم الشامل مع خريطة الملفات التفصيلية</p>',
-      '        </div>',
-      '        <div class="stats-grid">',
-      '            <div class="stat-card">',
-      '                <div class="stat-number">50+</div>',
-      '                <div class="stat-label">ملف ومكون</div>',
-      '            </div>',
-      '            <div class="stat-card">',
-      '                <div class="stat-number">15+</div>',
-      '                <div class="stat-label">خدمة متخصصة</div>',
-      '            </div>',
-      '        </div>',
-      '        <h2>🗂️ خريطة هيكل المشروع</h2>',
-      '        <div class="file-tree">',
-      fileTreeHtml,
-      '        </div>',
-      '        <div style="text-align: center; margin-top: 30px; padding: 20px; background: #f1f5f9; border-radius: 10px;">',
-      '            <p style="color: #64748b; font-style: italic;">تم إنشاء هذا التوثيق تلقائياً من مراقب فيسبوك المتقدم</p>',
-      '        </div>',
-      '    </div>',
-      '</body>',
-      '</html>'
-    ].join('\n')
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+    <style>
+        body {
+            font-family: 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', sans-serif;
+            line-height: 1.7;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            color: white;
+        }
+        h1 { color: white; font-size: 2.5em; margin-bottom: 10px; }
+        h2 { color: #1e40af; margin-top: 40px; padding: 15px 20px; background: #dbeafe; border-radius: 10px; }
+        .file-tree { background: #f8fafc; padding: 25px; border-radius: 15px; border: 2px solid #e2e8f0; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0; }
+        .stat-card { background: #f1f5f9; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #cbd5e1; }
+        .stat-number { font-size: 2em; font-weight: bold; color: #1e40af; }
+        .stat-label { color: #64748b; font-size: 0.9em; margin-top: 5px; }
+        @media (max-width: 768px) { .container { padding: 20px; } h1 { font-size: 2em; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 مراقب فيسبوك المتقدم</h1>
+            <p style="font-size: 1.2em; margin: 0;">دليل المستخدم الشامل مع خريطة الملفات التفصيلية</p>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">50+</div>
+                <div class="stat-label">ملف ومكون</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">15+</div>
+                <div class="stat-label">خدمة متخصصة</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${currentDate}</div>
+                <div class="stat-label">تاريخ الإنشاء</div>
+            </div>
+        </div>
+        <h2>🗂️ خريطة هيكل المشروع</h2>
+        <div class="file-tree">
+            ${fileTreeHtml}
+        </div>
+        <div style="text-align: center; margin-top: 30px; padding: 20px; background: #f1f5f9; border-radius: 10px;">
+            <p style="color: #64748b; font-style: italic;">تم إنشاء هذا التوثيق تلقائياً من مراقب فيسبوك المتقدم</p>
+        </div>
+    </div>
+</body>
+</html>`
+
     const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
@@ -1495,41 +1487,41 @@ export function DocumentationExport({ darkMode, language }: DocumentationExportP
       
       const currentDate = new Date().toLocaleDateString('ar-EG')
       
-      const htmlContent = [
-        '<div style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px;">',
-        '  <h1 style="margin: 0; font-size: 24px;">🔍 مراقب فيسبوك المتقدم</h1>',
-        '  <p style="margin: 10px 0 0 0; font-size: 16px;">دليل المستخدم الشامل مع خريطة الملفات التفصيلية</p>',
-        '</div>',
-        '',
-        '<div style="margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 8px; border-right: 4px solid #2563eb;">',
-        '  <h2 style="color: #1e40af; margin: 0 0 10px 0;">🗂️ خريطة هيكل المشروع</h2>',
-        '  <p style="margin: 0; color: #64748b;">تحتوي على شجرة تفصيلية شاملة لجميع ملفات ومجلدات المشروع</p>',
-        '</div>',
-        '',
-        generateEnhancedFileTreeHtml(projectStructure),
-        '',
-        '<div style="margin-top: 30px; padding: 20px; background: #f1f5f9; border-radius: 10px; text-align: center;">',
-        '  <h3 style="color: #1e40af; margin-bottom: 15px;">📊 إحصائيات المشروع</h3>',
-        '  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 15px;">',
-        '    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">',
-        '      <strong>تاريخ الإنشاء:</strong><br>' + currentDate,
-        '    </div>',
-        '    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">',
-        '      <strong>حجم المشروع:</strong><br>~200KB من الكود',
-        '    </div>',
-        '    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">',
-        '      <strong>عدد التقنيات:</strong><br>10+ تقنية حديثة',
-        '    </div>',
-        '    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">',
-        '      <strong>مستوى التعقيد:</strong><br>متقدم',
-        '    </div>',
-        '  </div>',
-        '</div>',
-        '',
-        '<div style="margin-top: 30px; padding: 15px; background: #f0f9ff; border-radius: 8px; text-align: center; border: 1px solid #bae6fd;">',
-        '  <p style="margin: 0; color: #0c4a6e; font-style: italic;">تم إنشاء هذا التوثيق تلقائياً من مراقب فيسبوك المتقدم</p>',
-        '</div>'
-      ].join('\n')
+      const htmlContent = `
+        <div style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px;">
+          <h1 style="margin: 0; font-size: 24px;">🔍 مراقب فيسبوك المتقدم</h1>
+          <p style="margin: 10px 0 0 0; font-size: 16px;">دليل المستخدم الشامل مع خريطة الملفات التفصيلية</p>
+        </div>
+        
+        <div style="margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 8px; border-right: 4px solid #2563eb;">
+          <h2 style="color: #1e40af; margin: 0 0 10px 0;">🗂️ خريطة هيكل المشروع</h2>
+          <p style="margin: 0; color: #64748b;">تحتوي على شجرة تفصيلية شاملة لجميع ملفات ومجلدات المشروع</p>
+        </div>
+        
+        ${generateEnhancedFileTreeHtml(projectStructure)}
+        
+        <div style="margin-top: 30px; padding: 20px; background: #f1f5f9; border-radius: 10px; text-align: center;">
+          <h3 style="color: #1e40af; margin-bottom: 15px;">📊 إحصائيات المشروع</h3>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 15px;">
+            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <strong>تاريخ الإنشاء:</strong><br>${currentDate}
+            </div>
+            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <strong>حجم المشروع:</strong><br>~200KB من الكود
+            </div>
+            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <strong>عدد التقنيات:</strong><br>10+ تقنية حديثة
+            </div>
+            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <strong>مستوى التعقيد:</strong><br>متقدم
+            </div>
+          </div>
+        </div>
+        
+        <div style="margin-top: 30px; padding: 15px; background: #f0f9ff; border-radius: 8px; text-align: center; border: 1px solid #bae6fd;">
+          <p style="margin: 0; color: #0c4a6e; font-style: italic;">تم إنشاء هذا التوثيق تلقائياً من مراقب فيسبوك المتقدم</p>
+        </div>
+      `
       
       contentDiv.innerHTML = htmlContent
       document.body.appendChild(contentDiv)
