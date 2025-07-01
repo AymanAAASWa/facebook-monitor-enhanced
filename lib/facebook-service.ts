@@ -56,7 +56,7 @@ interface FacebookPost {
       viewer_reaction?: string
     }
   }
-  
+
   shares?: {
     count: number
   }
@@ -126,12 +126,12 @@ export class FacebookService {
 
       if (!response.ok) {
         const responseText = await response.text()
-        
+
         // Check if response is HTML (usually error pages)
         if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
           throw new Error(`Facebook API returned HTML error page: ${response.status} ${response.statusText}`)
         }
-        
+
         try {
           const errorData = JSON.parse(responseText)
           throw new Error(errorData.error?.message || `Facebook API Error: ${response.status} ${response.statusText}`)
@@ -141,12 +141,12 @@ export class FacebookService {
       }
 
       const responseText = await response.text()
-      
+
       // Check if response is HTML instead of JSON
       if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
         throw new Error('Facebook API returned HTML instead of JSON. This may indicate rate limiting or authentication issues.')
       }
-      
+
       try {
         return JSON.parse(responseText)
       } catch (jsonError) {
@@ -181,13 +181,13 @@ export class FacebookService {
   ): Promise<{ data: FacebookPost[]; paging?: any; error?: string }> {
     try {
       console.log(`Starting to fetch posts from ${sourceType} ${sourceId}`)
-      
+
       // استخدام endpoint مختلف للمجموعات
       let endpoint = sourceType === "group" ? `/${sourceId}/feed` : `/${sourceId}/posts`
 
       // إعداد الحقول المطلوبة حسب نوع المصدر
       let baseFields = []
-      
+
       if (sourceType === "group") {
         // للمجموعات - حقول أساسية فقط لتجنب المشاكل
         baseFields = [
@@ -198,7 +198,7 @@ export class FacebookService {
           "from{id,name}",
           "type"
         ]
-        
+
         // للمجموعات - تجنب إضافة التعليقات في الطلب الأساسي
         if (includeComments) {
           baseFields.push("comments.limit(5){id,message,created_time,from{id,name}}")
@@ -216,7 +216,7 @@ export class FacebookService {
           "shares",
           "reactions.summary(total_count)"
         ]
-        
+
         // إضافة التعليقات إذا كان مطلوباً
         if (includeComments) {
           baseFields.push("comments.limit(15){id,message,created_time,from{id,name,picture},like_count}")
@@ -398,6 +398,16 @@ export class FacebookService {
 
       const response = await this.makeRequest<FacebookApiResponse<FacebookAttachment>>(`/${postId}/attachments`, params)
 
+      return {
+        data: response.data || [],
+      }
+    } catch (error) {
+      return {
+        data: [],
+        error: error instanceof Error ? error.message : "Failed to fetch attachments",
+      }
+    }
+  }
 
   // طريقة خاصة لجلب منشورات المجموعات
   async getGroupFeed(
@@ -406,7 +416,7 @@ export class FacebookService {
   ): Promise<{ data: FacebookPost[]; error?: string }> {
     try {
       console.log(`Fetching group feed for: ${groupId}`)
-      
+
       // استخدام حقول أساسية فقط للمجموعات
       const params = {
         fields: [
@@ -422,17 +432,17 @@ export class FacebookService {
       }
 
       const response = await this.makeRequest<{ data: FacebookPost[]; paging: any }>(`/${groupId}/feed`, params)
-      
+
       console.log(`Successfully fetched ${response.data?.length || 0} posts from group feed`)
-      
+
       return { data: response.data || [] }
     } catch (error: any) {
       console.error("Error fetching group feed:", error)
-      
+
       // إذا فشل endpoint /feed، جرب الطرق البديلة
       if (error.message.includes("100") || error.message.includes("Tried accessing nonexisting field")) {
         console.log("Trying alternative group access methods...")
-        
+
         try {
           // جرب الحصول على معلومات المجموعة أولاً
           const groupInfo = await this.getGroupInfo(groupId)
@@ -442,7 +452,7 @@ export class FacebookService {
               error: `لا يمكن الوصول للمجموعة: ${groupInfo.error}. تأكد من أن لديك الصلاحيات المطلوبة` 
             }
           }
-          
+
           return { 
             data: [], 
             error: "المجموعة موجودة لكن لا يمكن الوصول للمنشورات. قد تحتاج لصلاحيات إضافية أو أن المجموعة خاصة" 
@@ -454,22 +464,11 @@ export class FacebookService {
           }
         }
       }
-      
+
       return { data: [], error: error.message }
     }
   }
 
-
-      return {
-        data: response.data || [],
-      }
-    } catch (error) {
-      return {
-        data: [],
-        error: error instanceof Error ? error.message : "Failed to fetch attachments",
-      }
-    }
-  }
 
   async getGroupInfo(groupId: string): Promise<{ data?: any; error?: string }> {
     try {
