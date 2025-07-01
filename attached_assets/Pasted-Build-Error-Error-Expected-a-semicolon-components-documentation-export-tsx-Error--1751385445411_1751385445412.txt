@@ -1,0 +1,49 @@
+Build Error
+
+
+Error:   × Expected a semicolon
+
+./components/documentation-export.tsx
+
+Error:   × Expected a semicolon
+      ╭─[/home/runner/workspace/components/documentation-export.tsx:1497:1]
+ 1494 │       contentDiv.style.background = 'white'
+ 1495 │       
+ 1496 │       const htmlContent = `
+ 1497 │         <div style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px;">
+      ·              ─────
+ 1498 │           <h1 style="margin: 0; font-size: 24px;">🔍 مراقب فيسبوك المتقدم</h1>
+ 1499 │           <p style="margin: 10px 0 0 0; font-size: 16px;">دليل المستخدم الشامل مع خريطة الملفات التفصيلية</p>
+ 1500 │         </div>
+      ╰────
+  × Expression expected
+      ╭─[/home/runner/workspace/components/documentation-export.tsx:1500:1]
+ 1497 │         <div style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px;">
+ 1498 │           <h1 style="margin: 0; font-size: 24px;">🔍 مراقب فيسبوك المتقدم</h1>
+ 1499 │           <p style="margin: 10px 0 0 0; font-size: 16px;">دليل المستخدم الشامل مع خريطة الملفات التفصيلية</p>
+ 1500 │         </div>
+      ·          ─
+ 1501 │         
+ 1502 │         <div style="margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 8px; border-right: 4px solid #2563eb;">
+ 1503 │           <h2 style="color: #1e40af; margin: 0 0 10px 0;">🗂️ خريطة هيكل المشروع</h2>
+      ╰────
+  × Expression expected
+      ╭─[/home/runner/workspace/components/documentation-export.tsx:1500:1]
+ 1497 │         <div style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px;">
+ 1498 │           <h1 style="margin: 0; font-size: 24px;">🔍 مراقب فيسبوك المتقدم</h1>
+ 1499 │           <p style="margin: 10px 0 0 0; font-size: 16px;">دليل المستخدم الشامل مع خريطة الملفات التفصيلية</p>
+ 1500 │         </div>
+      ·           ───
+ 1501 │         
+ 1502 │         <div style="margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 8px; border-right: 4px solid #2563eb;">
+ 1503 │           <h2 style="color: #1e40af; margin: 0 0 10px 0;">🗂️ خريطة هيكل المشروع</h2>
+      ╰────
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/documentation-export.tsx
+./components/facebook-monitor.tsx
+./app/page.tsx
+This error occurred during the build process and can only be dismissed by fixing the error.
