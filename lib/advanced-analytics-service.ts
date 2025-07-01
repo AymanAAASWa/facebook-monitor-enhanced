@@ -513,8 +513,9 @@ export class AdvancedAnalyticsService {
         // إضافة العدد الإجمالي من الـ summary كبديل أخير
         if (postReactions === 0 && post.reactions?.summary?.total_count) {
           const totalReactionCount = post.reactions.summary.total_count
-        reactionTypes["LIKE"] += totalReactionCount // افتراض أن معظمها إعجابات
-        postReactions += totalReactionCount
+          reactionTypes["LIKE"] += totalReactionCount // افتراض أن معظمها إعجابات
+          postReactions += totalReactionCount
+        }
       }
       
       // إضافة الإعجابات العادية (للمنشورات القديمة)
