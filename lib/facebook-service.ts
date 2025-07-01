@@ -128,7 +128,9 @@ export class FacebookService {
   ): Promise<{ data: FacebookPost[]; paging?: any; error?: string }> {
     try {
       let endpoint = `/${sourceId}/posts`
-      const params: {
+      
+      // Try with comments first
+      let params: {
         fields: string
         limit: string
         until?: string
@@ -142,7 +144,7 @@ export class FacebookService {
           "from{id,name,picture}",
           "attachments{media,type,subattachments}",
           "shares",
-          includeComments ? "comments.limit(25){id,message,created_time,from{id,name,picture},like_count}" : "",
+          includeComments ? "comments.limit(10){id,message,created_time,from{id,name,picture},like_count}" : "",
         ].filter(Boolean).join(","),
         limit: String(limit),
       }
@@ -151,13 +153,49 @@ export class FacebookService {
         params.until = until
       }
 
-      const response = await this.makeRequest<{ data: FacebookPost[]; paging: any }>(endpoint, params)
-
-      if (response.data) {
-        return { data: response.data, paging: response.paging }
-      } else {
-        return { data: [], paging: null }
+      try {
+        const response = await this.makeRequest<{ data: FacebookPost[]; paging: any }>(endpoint, params)
+        if (response.data) {
+          return { data: response.data, paging: response.paging }
+        }
+      } catch (error: any) {
+        // If request with comments fails due to rate limiting, try without comments
+        if (error.message.includes("يبدو أنك كنت تسيء استخدام") || 
+            error.message.includes("368") || 
+            error.message.includes("rate limit")) {
+          
+          console.log("Rate limit hit, retrying without comments...")
+          
+          // Retry without comments
+          params.fields = [
+            "id",
+            "message",
+            "full_picture",
+            "created_time",
+            "updated_time",
+            "from{id,name,picture}",
+            "attachments{media,type,subattachments}",
+            "shares",
+          ].join(",")
+          
+          const retryResponse = await this.makeRequest<{ data: FacebookPost[]; paging: any }>(endpoint, params)
+          
+          // Add empty comments to each post
+          const postsWithEmptyComments = (retryResponse.data || []).map(post => ({
+            ...post,
+            comments: { data: [] }
+          }))
+          
+          return { 
+            data: postsWithEmptyComments, 
+            paging: retryResponse.paging,
+            error: "تم جلب المنشورات بدون تعليقات بسبب حدود API"
+          }
+        }
+        throw error
       }
+
+      return { data: [], paging: null }
     } catch (error: any) {
       console.error("Error fetching posts:", error)
       return { data: [], error: error.message }
@@ -168,6 +206,9 @@ export class FacebookService {
     try {
       console.log(`Fetching comments for post: ${postId}`)
 
+      // Add small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500))
+
       const response = await fetch(
         `${this.baseUrl}/${postId}/comments?access_token=${this.accessToken}&fields=id,message,created_time,from{id,name,picture},like_count,can_reply&limit=${limit}&order=chronological`,
       )
@@ -175,6 +216,14 @@ export class FacebookService {
       if (!response.ok) {
         const errorText = await response.text()
         console.error(`Facebook API Error (${response.status}):`, errorText)
+        
+        // Check if it's a rate limit error
+        if (errorText.includes("يبدو أنك كنت تسيء استخدام") || 
+            errorText.includes("368") || 
+            response.status === 400) {
+          return { data: [], error: "تم الوصول لحد معدل الطلبات" }
+        }
+        
         throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
 
@@ -182,6 +231,12 @@ export class FacebookService {
 
       if (result.error) {
         console.error("Facebook API returned error:", result.error)
+        
+        // Handle rate limiting errors gracefully
+        if (result.error.code === 368) {
+          return { data: [], error: "تم الوصول لحد معدل الطلبات" }
+        }
+        
         throw new Error(result.error.message)
       }
 
