@@ -1493,41 +1493,41 @@ export function DocumentationExport({ darkMode, language }: DocumentationExportP
       contentDiv.style.direction = 'rtl'
       contentDiv.style.background = 'white'
       
-      const htmlContent = `
-        <div style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px;">
-          <h1 style="margin: 0; font-size: 24px;">🔍 مراقب فيسبوك المتقدم</h1>
-          <p style="margin: 10px 0 0 0; font-size: 16px;">دليل المستخدم الشامل مع خريطة الملفات التفصيلية</p>
-        </div>
-        
-        <div style="margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 8px; border-right: 4px solid #2563eb;">
-          <h2 style="color: #1e40af; margin: 0 0 10px 0;">🗂️ خريطة هيكل المشروع</h2>
-          <p style="margin: 0; color: #64748b;">تحتوي على شجرة تفصيلية شاملة لجميع ملفات ومجلدات المشروع</p>
-        </div>
-        
-        ${generateEnhancedFileTreeHtml(projectStructure)}
-        
-        <div style="margin-top: 30px; padding: 20px; background: #f1f5f9; border-radius: 10px; text-align: center;">
-          <h3 style="color: #1e40af; margin-bottom: 15px;">📊 إحصائيات المشروع</h3>
-          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 15px;">
-            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-              <strong>تاريخ الإنشاء:</strong><br>${new Date().toLocaleDateString('ar-EG')}
-            </div>
-            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-              <strong>حجم المشروع:</strong><br>~200KB من الكود
-            </div>
-            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-              <strong>عدد التقنيات:</strong><br>10+ تقنية حديثة
-            </div>
-            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-              <strong>مستوى التعقيد:</strong><br>متقدم
-            </div>
-          </div>
-        </div>
-        
-        <div style="margin-top: 30px; padding: 15px; background: #f0f9ff; border-radius: 8px; text-align: center; border: 1px solid #bae6fd;">
-          <p style="margin: 0; color: #0c4a6e; font-style: italic;">تم إنشاء هذا التوثيق تلقائياً من مراقب فيسبوك المتقدم</p>
-        </div>
-      `
+      const htmlContent = [
+        '<div style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px;">',
+        '  <h1 style="margin: 0; font-size: 24px;">🔍 مراقب فيسبوك المتقدم</h1>',
+        '  <p style="margin: 10px 0 0 0; font-size: 16px;">دليل المستخدم الشامل مع خريطة الملفات التفصيلية</p>',
+        '</div>',
+        '',
+        '<div style="margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 8px; border-right: 4px solid #2563eb;">',
+        '  <h2 style="color: #1e40af; margin: 0 0 10px 0;">🗂️ خريطة هيكل المشروع</h2>',
+        '  <p style="margin: 0; color: #64748b;">تحتوي على شجرة تفصيلية شاملة لجميع ملفات ومجلدات المشروع</p>',
+        '</div>',
+        '',
+        generateEnhancedFileTreeHtml(projectStructure),
+        '',
+        '<div style="margin-top: 30px; padding: 20px; background: #f1f5f9; border-radius: 10px; text-align: center;">',
+        '  <h3 style="color: #1e40af; margin-bottom: 15px;">📊 إحصائيات المشروع</h3>',
+        '  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 15px;">',
+        '    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">',
+        `      <strong>تاريخ الإنشاء:</strong><br>${new Date().toLocaleDateString('ar-EG')}`,
+        '    </div>',
+        '    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">',
+        '      <strong>حجم المشروع:</strong><br>~200KB من الكود',
+        '    </div>',
+        '    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">',
+        '      <strong>عدد التقنيات:</strong><br>10+ تقنية حديثة',
+        '    </div>',
+        '    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">',
+        '      <strong>مستوى التعقيد:</strong><br>متقدم',
+        '    </div>',
+        '  </div>',
+        '</div>',
+        '',
+        '<div style="margin-top: 30px; padding: 15px; background: #f0f9ff; border-radius: 8px; text-align: center; border: 1px solid #bae6fd;">',
+        '  <p style="margin: 0; color: #0c4a6e; font-style: italic;">تم إنشاء هذا التوثيق تلقائياً من مراقب فيسبوك المتقدم</p>',
+        '</div>'
+      ].join('\n')
       
       contentDiv.innerHTML = htmlContent
       document.body.appendChild(contentDiv)
