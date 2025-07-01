@@ -151,7 +151,7 @@ export function AdvancedAnalyticsDashboard({
       wordCloud: "Word Cloud",
       hashtagAnalysis: "Hashtag Analysis",
       bestPerforming: "Best Performing",
-      worst Performing: "Worst Performing",
+      worstPerforming: "Worst Performing",
       growthPrediction: "Growth Prediction",
       riskAnalysis: "Risk Analysis",
       recommendations: "Recommendations",
