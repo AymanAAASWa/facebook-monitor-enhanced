@@ -46,15 +46,25 @@ interface FacebookPost {
     name: string
   }
   reactions?: {
-    data: Array<{
+    data?: Array<{
       id: string
       name: string
       type: string
     }>
-    summary: {
+    summary?: {
       total_count: number
       viewer_reaction?: string
     }
+    // دعم البنية الجديدة لأنواع التفاعلات المختلفة
+    LIKE?: { summary: { total_count: number } }
+    LOVE?: { summary: { total_count: number } }
+    WOW?: { summary: { total_count: number } }
+    HAHA?: { summary: { total_count: number } }
+    SAD?: { summary: { total_count: number } }
+    ANGRY?: { summary: { total_count: number } }
+    CARE?: { summary: { total_count: number } }
+    THANKFUL?: { summary: { total_count: number } }
+    PRIDE?: { summary: { total_count: number } }
   }
   
   shares?: {
@@ -175,7 +185,15 @@ export class FacebookService {
           "from{id,name,picture}",
           "attachments{media,type,subattachments}",
           "shares",
-          "reactions.summary(true)",
+          "reactions.type(LIKE).limit(0).summary(total_count)",
+          "reactions.type(LOVE).limit(0).summary(total_count)",
+          "reactions.type(WOW).limit(0).summary(total_count)",
+          "reactions.type(HAHA).limit(0).summary(total_count)",
+          "reactions.type(SAD).limit(0).summary(total_count)",
+          "reactions.type(ANGRY).limit(0).summary(total_count)",
+          "reactions.type(CARE).limit(0).summary(total_count)",
+          "reactions.type(THANKFUL).limit(0).summary(total_count)",
+          "reactions.type(PRIDE).limit(0).summary(total_count)",
           includeComments ? "comments.limit(25){id,message,created_time,from{id,name,picture},like_count,comment_count}" : "",
         ].filter(Boolean).join(","),
         limit: String(limit),
@@ -225,7 +243,15 @@ export class FacebookService {
                 "from{id,name,picture}",
                 "attachments{media,type,subattachments}",
                 "shares",
-                "reactions.summary(true)",
+                "reactions.type(LIKE).limit(0).summary(total_count)",
+                "reactions.type(LOVE).limit(0).summary(total_count)",
+                "reactions.type(WOW).limit(0).summary(total_count)",
+                "reactions.type(HAHA).limit(0).summary(total_count)",
+                "reactions.type(SAD).limit(0).summary(total_count)",
+                "reactions.type(ANGRY).limit(0).summary(total_count)",
+                "reactions.type(CARE).limit(0).summary(total_count)",
+                "reactions.type(THANKFUL).limit(0).summary(total_count)",
+                "reactions.type(PRIDE).limit(0).summary(total_count)",
               ].join(","),
               limit: String(limit),
             }
