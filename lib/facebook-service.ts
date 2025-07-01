@@ -182,24 +182,45 @@ export class FacebookService {
     try {
       console.log(`Starting to fetch posts from ${sourceType} ${sourceId}`)
       
-      let endpoint = `/${sourceId}/posts`
+      // استخدام endpoint مختلف للمجموعات
+      let endpoint = sourceType === "group" ? `/${sourceId}/feed` : `/${sourceId}/posts`
 
       // إعداد الحقول المطلوبة حسب نوع المصدر
-      const baseFields = [
-        "id",
-        "message", 
-        "full_picture",
-        "created_time",
-        "updated_time",
-        "from{id,name,picture}",
-        "attachments{media,type,subattachments}",
-        "shares",
-        "reactions.summary(total_count)"
-      ]
-
-      // إضافة التعليقات إذا كان مطلوباً
-      if (includeComments) {
-        baseFields.push("comments.limit(15){id,message,created_time,from{id,name,picture},like_count}")
+      let baseFields = []
+      
+      if (sourceType === "group") {
+        // للمجموعات - حقول أساسية فقط لتجنب المشاكل
+        baseFields = [
+          "id",
+          "message",
+          "full_picture", 
+          "created_time",
+          "from{id,name}",
+          "type"
+        ]
+        
+        // للمجموعات - تجنب إضافة التعليقات في الطلب الأساسي
+        if (includeComments) {
+          baseFields.push("comments.limit(5){id,message,created_time,from{id,name}}")
+        }
+      } else {
+        // للصفحات - حقول كاملة
+        baseFields = [
+          "id",
+          "message", 
+          "full_picture",
+          "created_time",
+          "updated_time",
+          "from{id,name,picture}",
+          "attachments{media,type,subattachments}",
+          "shares",
+          "reactions.summary(total_count)"
+        ]
+        
+        // إضافة التعليقات إذا كان مطلوباً
+        if (includeComments) {
+          baseFields.push("comments.limit(15){id,message,created_time,from{id,name,picture},like_count}")
+        }
       }
 
       let params: {
@@ -240,7 +261,9 @@ export class FacebookService {
             error.message.includes("يبدو أنك كنت تسيء استخدام") || 
             error.message.includes("368") || 
             error.message.includes("rate limit") ||
-            error.message.includes("permissions")
+            error.message.includes("permissions") ||
+            error.message.includes("Tried accessing nonexisting field") ||
+            (sourceType === "group" && error.message.includes("100"))
         )) {
 
           console.log("Trying alternative approach: fetch posts first, then comments...")
@@ -248,7 +271,14 @@ export class FacebookService {
           try {
             // First get posts without comments
             const basicParams = {
-              fields: [
+              fields: sourceType === "group" ? [
+                "id",
+                "message",
+                "full_picture",
+                "created_time",
+                "from{id,name}",
+                "type"
+              ].join(",") : [
                 "id",
                 "message",
                 "full_picture",
@@ -367,6 +397,68 @@ export class FacebookService {
       }
 
       const response = await this.makeRequest<FacebookApiResponse<FacebookAttachment>>(`/${postId}/attachments`, params)
+
+
+  // طريقة خاصة لجلب منشورات المجموعات
+  async getGroupFeed(
+    groupId: string, 
+    limit = 10
+  ): Promise<{ data: FacebookPost[]; error?: string }> {
+    try {
+      console.log(`Fetching group feed for: ${groupId}`)
+      
+      // استخدام حقول أساسية فقط للمجموعات
+      const params = {
+        fields: [
+          "id",
+          "message",
+          "full_picture",
+          "created_time", 
+          "from{id,name}",
+          "type",
+          "permalink_url"
+        ].join(","),
+        limit: String(Math.min(limit, 25)) // حد أقصى 25 للمجموعات
+      }
+
+      const response = await this.makeRequest<{ data: FacebookPost[]; paging: any }>(`/${groupId}/feed`, params)
+      
+      console.log(`Successfully fetched ${response.data?.length || 0} posts from group feed`)
+      
+      return { data: response.data || [] }
+    } catch (error: any) {
+      console.error("Error fetching group feed:", error)
+      
+      // إذا فشل endpoint /feed، جرب الطرق البديلة
+      if (error.message.includes("100") || error.message.includes("Tried accessing nonexisting field")) {
+        console.log("Trying alternative group access methods...")
+        
+        try {
+          // جرب الحصول على معلومات المجموعة أولاً
+          const groupInfo = await this.getGroupInfo(groupId)
+          if (groupInfo.error) {
+            return { 
+              data: [], 
+              error: `لا يمكن الوصول للمجموعة: ${groupInfo.error}. تأكد من أن لديك الصلاحيات المطلوبة` 
+            }
+          }
+          
+          return { 
+            data: [], 
+            error: "المجموعة موجودة لكن لا يمكن الوصول للمنشورات. قد تحتاج لصلاحيات إضافية أو أن المجموعة خاصة" 
+          }
+        } catch (infoError) {
+          return { 
+            data: [], 
+            error: "لا يمكن الوصول للمجموعة. تحقق من معرف المجموعة والصلاحيات" 
+          }
+        }
+      }
+      
+      return { data: [], error: error.message }
+    }
+  }
+
 
       return {
         data: response.data || [],
