@@ -121,59 +121,77 @@ export class FacebookService {
 
   async getPosts(
     sourceId: string,
-    limit = 10, // Reduced default limit
-    after?: string,
-  ): Promise<{ data: FacebookPost[]; nextCursor?: string; error?: string }> {
+    sourceType: "page" | "group" = "page",
+    limit = 25,
+    until?: string,
+    includeComments = true,
+  ): Promise<{ data: FacebookPost[]; paging?: any; error?: string }> {
     try {
-      // Simplified fields to reduce data load
-      const params: Record<string, string> = {
+      let endpoint = `/${sourceId}/posts`
+      const params: {
+        fields: string
+        limit: string
+        until?: string
+      } = {
         fields: [
           "id",
           "message",
-          "created_time",
           "full_picture",
+          "created_time",
+          "updated_time",
           "from{id,name,picture}",
-          // Removed nested comments and attachments to reduce load
-        ].join(","),
-        limit: Math.min(limit, 25).toString(), // Cap at 25
+          "attachments{media,type,subattachments}",
+          "likes.summary(true)",
+          "shares",
+          "reactions.summary(true)",
+          includeComments ? "comments.limit(25){id,message,created_time,from{id,name,picture},like_count}" : "",
+        ].filter(Boolean).join(","),
+        limit: String(limit),
       }
 
-      if (after) {
-        params.after = after
+      if (until) {
+        params.until = until
       }
 
-      const response = await this.makeRequest<FacebookApiResponse<FacebookPost>>(`/${sourceId}/posts`, params)
+      const response = await this.makeRequest<{ data: FacebookPost[]; paging: any }>(endpoint, params)
 
-      return {
-        data: response.data || [],
-        nextCursor: response.paging?.cursors?.after,
+      if (response.data) {
+        return { data: response.data, paging: response.paging }
+      } else {
+        return { data: [], paging: null }
       }
-    } catch (error) {
-      return {
-        data: [],
-        error: error instanceof Error ? error.message : "Failed to fetch posts",
-      }
+    } catch (error: any) {
+      console.error("Error fetching posts:", error)
+      return { data: [], error: error.message }
     }
   }
 
-  // Separate method to get comments for a specific post
-  async getPostComments(postId: string, limit = 10): Promise<{ data: FacebookComment[]; error?: string }> {
+  async getPostComments(postId: string, limit = 25): Promise<{ data: FacebookComment[]; error?: string }> {
     try {
-      const params: Record<string, string> = {
-        fields: "id,message,created_time,from{id,name}",
-        limit: limit.toString(),
+      console.log(`Fetching comments for post: ${postId}`)
+
+      const response = await fetch(
+        `${this.baseUrl}/${postId}/comments?access_token=${this.accessToken}&fields=id,message,created_time,from{id,name,picture},like_count,can_reply&limit=${limit}&order=chronological`,
+      )
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error(`Facebook API Error (${response.status}):`, errorText)
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
 
-      const response = await this.makeRequest<FacebookApiResponse<FacebookComment>>(`/${postId}/comments`, params)
+      const result = await response.json()
 
-      return {
-        data: response.data || [],
+      if (result.error) {
+        console.error("Facebook API returned error:", result.error)
+        throw new Error(result.error.message)
       }
-    } catch (error) {
-      return {
-        data: [],
-        error: error instanceof Error ? error.message : "Failed to fetch comments",
-      }
+
+      console.log(`Found ${result.data?.length || 0} comments for post ${postId}`)
+      return { data: result.data || [] }
+    } catch (error: any) {
+      console.error("Error fetching post comments:", error)
+      return { data: [], error: error.message }
     }
   }
 

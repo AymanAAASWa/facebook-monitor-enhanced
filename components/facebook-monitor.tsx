@@ -1,3 +1,6 @@
+أقوم بتحديث وظيفة جلب المنشورات لإضافة تسجيل تصحيح الأخطاء للتعليقات.
+```
+```replit_final_file
 "use client"
 
 import { useState, useEffect } from "react"
@@ -654,3 +657,5 @@ export function FacebookMonitor() {
     </div>
   )
 }
+
+```أقوم بتحديث وظيفة جلب المنشورات لإضافة تسجيل تصحيح الأخطاء للتعليقات.
