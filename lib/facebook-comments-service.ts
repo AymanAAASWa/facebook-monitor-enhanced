@@ -67,7 +67,7 @@ export class FacebookCommentsService {
   async getPostComments(postId: string, limit = 25): Promise<{ data: FacebookComment[]; error?: string }> {
     try {
       const response = await fetch(
-        `${this.baseUrl}/${postId}/comments?access_token=${this.accessToken}&fields=id,message,created_time,from{id,name,picture},parent,can_reply,like_count,user_likes&limit=${limit}&order=chronological`,
+        `${this.baseUrl}/${postId}/comments?access_token=${this.accessToken}&fields=id,message,created_time,from{id,name,picture.type(large)},parent,can_reply,like_count,user_likes&limit=${limit}&order=chronological`,
       )
 
       const result = await response.json()

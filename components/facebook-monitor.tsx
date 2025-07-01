@@ -49,6 +49,7 @@ import { EnhancedDataViewer } from "./enhanced-data-viewer"
 import { AutoCollectionControl } from "./auto-collection-control"
 import { DocumentationExport } from "./documentation-export"
 import { ReportGenerator } from "./report-generator"
+import { facebookUserAnalyticsService } from "@/lib/facebook-user-analytics-service"
 
 export function FacebookMonitor() {
   const { data, loading, error, user, userSettings, fetchData, setUser, loadUserSettings } = useAppContext()
@@ -296,6 +297,14 @@ export function FacebookMonitor() {
   const accessToken = facebookUser?.accessToken || userSettings?.accessToken
   const isSetupComplete = accessToken && (userSettings?.sources?.length > 0 || facebookUser)
   const foundNumbers = savedRecords.length
+
+  useEffect(() => {
+    if (userSettings) {
+      // Set access token for comments service
+      facebookCommentsService.setAccessToken(userSettings.accessToken || "")
+      facebookUserAnalyticsService.setAccessToken(userSettings.accessToken || "")
+    }
+  }, [userSettings])
 
   return (
     <div

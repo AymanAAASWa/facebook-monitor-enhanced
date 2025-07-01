@@ -201,7 +201,7 @@ export class FacebookService {
 
         // للمجموعات - إضافة التعليقات بحد أقل لتجنب المشاكل
         if (includeComments) {
-          baseFields.push("comments.limit(10){id,message,created_time,from{id,name}}")
+          baseFields.push("comments.limit(10){id,message,created_time,from{id,name,picture.type(large)}}")
         }
       } else {
         // للصفحات - حقول كاملة
@@ -219,7 +219,7 @@ export class FacebookService {
 
         // إضافة التعليقات إذا كان مطلوباً
         if (includeComments) {
-          baseFields.push("comments.limit(15){id,message,created_time,from{id,name,picture},like_count}")
+          baseFields.push("comments.limit(15){id,message,created_time,from{id,name,picture.type(large)},like_count,user_likes}")
         }
       }
 
@@ -346,7 +346,7 @@ export class FacebookService {
       await new Promise(resolve => setTimeout(resolve, 500))
 
       const response = await fetch(
-        `${this.baseUrl}/${postId}/comments?access_token=${this.accessToken}&fields=id,message,created_time,from{id,name,picture},like_count,can_reply&limit=${limit}&order=chronological`,
+        `${this.baseUrl}/${postId}/comments?access_token=${this.accessToken}&fields=id,message,created_time,from{id,name,picture.type(large)},like_count,can_reply,user_likes&limit=${limit}&order=chronological`,
       )
 
       if (!response.ok) {

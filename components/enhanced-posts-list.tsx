@@ -24,6 +24,8 @@ import {
   ImageIcon,
   Video,
   DownloadIcon,
+  Heart,
+  TrendingUp,
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Image from "next/image"
@@ -31,6 +33,7 @@ import type { FacebookPost } from "@/lib/facebook-api-service"
 import { phoneSearchService } from "@/lib/phone-search-service"
 import { enhancedFacebookService } from "@/lib/enhanced-facebook-service"
 import { firebaseEnhancedService } from "@/lib/firebase-enhanced-service"
+import { UserAnalyticsViewer } from "./user-analytics-viewer"
 
 interface EnhancedPostsListProps {
   posts: Array<FacebookPost & { source_id: string; source_name: string; source_type: string }>
@@ -97,7 +100,8 @@ export function EnhancedPostsList({
   const [searchingPhones, setSearchingPhones] = useState<Set<string>>(new Set())
   const [phoneSearchResults, setPhoneSearchResults] = useState<{ [key: string]: string }>({})
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const [selectedUserId, setSelectedUserId] = useState<string>("")
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [showUserAnalytics, setShowUserAnalytics] = useState(false)
 
   const t = {
     ar: {
@@ -370,6 +374,29 @@ export function EnhancedPostsList({
     return media
   }
 
+  const handleViewPost = (post: any) => {
+    setSelectedPost(post)
+  }
+
+  const handleUserClick = (userId: string) => {
+    if (userId) {
+      setSelectedUserId(userId)
+      setShowUserAnalytics(true)
+    }
+  }
+
+  const handleUserAnalytics = (userId: string) => {
+    if (userId) {
+      setSelectedUserId(userId)
+      setShowUserAnalytics(true)
+    }
+  }
+
+  const handleCloseUserAnalytics = () => {
+    setShowUserAnalytics(false)
+    setSelectedUserId(null)
+  }
+
   // تصفية وترتيب المنشورات
   const filteredAndSortedPosts = posts
     .filter((post) => {
@@ -413,6 +440,18 @@ export function EnhancedPostsList({
           <p className="text-gray-500">{text.tryLoading}</p>
         </CardContent>
       </Card>
+    )
+  }
+
+  if (showUserAnalytics && selectedUserId) {
+    return (
+      <UserAnalyticsViewer
+        userId={selectedUserId}
+        posts={posts}
+        darkMode={darkMode}
+        language={language}
+        onClose={handleCloseUserAnalytics}
+      />
     )
   }
 
@@ -703,65 +742,56 @@ export function EnhancedPostsList({
                       {post.comments.data.map((comment) => (
                         <div
                           key={comment.id}
-                          className="flex gap-2 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-600 rounded-lg shadow-sm"
+                          className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                         >
-                          <div className="relative w-6 h-6 rounded-full overflow-hidden shadow">
-                            <div className="w-full h-full bg-gradient-to-r from-green-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
-                              {comment.from?.name?.charAt(0) || "?"}
-                            </div>
+                          <div className="relative">
+                            {comment.from?.picture?.data?.url ? (
+                              <img
+                                src={comment.from.picture.data.url}
+                                alt={comment.from.name || "User"}
+                                className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                                <User className="w-5 h-5 text-white" />
+                              </div>
+                            )}
+                            {comment.user_likes && (
+                              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                                <Heart className="w-2 h-2 text-white fill-current" />
+                              </div>
+                            )}
                           </div>
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <span className="font-semibold text-xs">{comment.from?.name || text.unknown}</span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => window.open(buildUserUrl(comment.from?.id || ""), "_blank")}
-                                className="h-3 w-3 p-0 hover:bg-blue-100"
-                              >
-                                <User className="w-2 h-2" />
-                              </Button>
-                              {comment.from?.id && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handlePhoneSearch(comment.from?.id || "", comment.from?.name || "")}
-                                  disabled={searchingPhones.has(comment.from?.id || "")}
-                                  className="h-3 w-3 p-0 hover:bg-green-100"
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleUserClick(comment.from?.id || "")}
+                                  className="font-medium text-sm hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
                                 >
-                                  {searchingPhones.has(comment.from?.id || "") ? (
-                                    <Loader2 className="w-2 h-2 animate-spin" />
-                                  ) : (
-                                    <Phone className="w-2 h-2" />
-                                  )}
-                                </Button>
-                              )}
-                              <span className="text-xs text-gray-500">
-                                {comment.created_time
-                                  ? new Date(comment.created_time).toLocaleString(language === "ar" ? "ar-EG" : "en-US")
-                                  : text.unknown}
-                              </span>
-
-                              {/* عرض رقم التليفون للمعلق */}
-                              {comment.from?.id && phoneSearchResults[comment.from.id] && (
-                                <Badge
-                                  variant="secondary"
-                                  className={`text-xs ${
-                                    phoneSearchResults[comment.from.id] === text.phoneNotFound ||
-                                    phoneSearchResults[comment.from.id] === "خطأ في البحث"
-                                      ? "bg-red-50 border-red-200 text-red-700"
-                                      : phoneSearchResults[comment.from.id] === text.phoneSearching
-                                        ? "bg-yellow-50 border-yellow-200 text-yellow-700"
-                                        : "bg-green-50 border-green-200 text-green-700"
-                                  }`}
+                                  {comment.from?.name || "مستخدم"}
+                                </button>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(comment.created_time).toLocaleString("ar-EG")}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-gray-500">
+                                {comment.like_count > 0 && (
+                                  <span className="flex items-center gap-1">
+                                    <Heart className="w-3 h-3" />
+                                    {comment.like_count}
+                                  </span>
+                                )}
+                                <button
+                                  onClick={() => handleUserAnalytics(comment.from?.id || "")}
+                                  className="text-blue-500 hover:text-blue-700 p-1 rounded"
+                                  title="تحليلات المستخدم"
                                 >
-                                  {phoneSearchResults[comment.from.id]}
-                                </Badge>
-                              )}
+                                  <TrendingUp className="w-3 h-3" />
+                                </button>
+                              </div>
                             </div>
-                            <p className="text-xs text-gray-700 dark:text-gray-300 bg-white/50 dark:bg-gray-800/50 p-2 rounded">
-                              {comment.message || "لا يوجد نص"}
-                            </p>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{comment.message}</p>
                           </div>
                         </div>
                       ))}
