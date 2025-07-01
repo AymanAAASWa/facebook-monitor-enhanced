@@ -120,6 +120,10 @@ export function processFacebookData(posts: any[]): AppData {
     }
   })
 
+  const totalReactions = posts.reduce((sum, post) => {
+      return sum + (post.reactions?.summary?.total_count || 0)
+    }, 0)
+
   // Calculate top users
   const topUsers = Array.from(users.values())
     .map((user) => ({
