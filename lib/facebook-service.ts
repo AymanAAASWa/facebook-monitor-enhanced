@@ -436,7 +436,7 @@ export class FacebookService {
 
       if (response.data) {
         console.log(`Successfully fetched ${response.data.length} posts from group feed with comments`)
-        
+
         // جلب التعليقات لكل منشور إذا لم تكن موجودة
         const postsWithComments = await Promise.all(
           response.data.map(async (post) => {
