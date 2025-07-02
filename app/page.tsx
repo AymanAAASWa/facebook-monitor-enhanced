@@ -28,7 +28,7 @@ export default function HomePage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="w-screen h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">جاري التحميل...</p>
@@ -39,7 +39,9 @@ export default function HomePage() {
 
   return (
     <AppProvider>
-      <FacebookMonitor />
+      <div className="w-screen h-screen overflow-hidden">
+        <FacebookMonitor />
+      </div>
     </AppProvider>
   )
 }

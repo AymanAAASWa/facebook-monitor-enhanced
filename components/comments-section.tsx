@@ -122,27 +122,29 @@ export function CommentsSection({ postId, darkMode = false, language = "ar" }: C
         </div>
       </CardHeader>
 
-      <CardContent className="p-4">
-        {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin mr-2" />
-            <span>{text.loading}</span>
-          </div>
-        ) : error ? (
+<CardContent className="p-4">
+  {loading ? (
+    <div className="flex items-center justify-center py-8">
+      <Loader2 className="w-6 h-6 animate-spin mr-2" />
+      <span>{text.loading}</span>
+    </div>
+  ) : error ? (
+    <div className="text-center py-8">
+      <p className="text-red-500 mb-4">{text.error}: {error}</p>
+      <Button onClick={loadComments} variant="outline">
+        {text.retry}
+      </Button>
+    </div>
+  ) : comments.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-red-500 mb-4">{text.error}: {error}</p>
-            <Button onClick={loadComments} variant="outline">
-              {text.retry}
-            </Button>
-          </div>
-        ) : comments.length === 0 ? (
-          <div className="text-center py-8">
-            <MessageSquare className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-            <p className="text-gray-500">{text.noComments}</p>
-          </div>
-        ) : (
-          <div className="max-h-80 overflow-y-auto border rounded-md">
-            <div className="p-4 space-y-4">
+      <MessageSquare className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+      <p className="text-gray-500">{text.noComments}</p>
+    </div>
+  ) : (
+    <div className="max-h-80 overflow-y-auto border rounded-md bg-gray-50 dark:bg-gray-800">
+      <div className="p-4 space-y-4">
+        {comments.map((comment) => (
+          <div key={comment.id} className="flex space-x-3 pb-4">
               {comments.map((comment, index) => (
                 <div key={comment.id} className={`flex space-x-3 pb-4 ${index < comments.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''}`}>
                   <Avatar className="w-10 h-10 flex-shrink-0">
@@ -167,10 +169,12 @@ export function CommentsSection({ postId, darkMode = false, language = "ar" }: C
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-      </CardContent>
+            </div></div>
+        ))}
+      </div>
+    </div>
+  )}
+</CardContent>
     </Card>
   )
 }

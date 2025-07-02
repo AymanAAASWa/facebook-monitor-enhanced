@@ -94,10 +94,7 @@ export function PostsList({
     <div
       ref={scrollContainerRef}
       className="space-y-6 overflow-y-auto"
-      style={{ 
-        maxHeight: "calc(100vh - 400px)",
-        scrollBehavior: "smooth"
-      }}
+      style={{ scrollBehavior: "smooth" }}
     >
       {posts.map((post) => (
         <PostCard

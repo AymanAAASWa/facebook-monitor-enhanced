@@ -1,4 +1,5 @@
 "use client"
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { useState, useEffect } from "react"
 import { LoginForm } from "./auth/login-form"
@@ -306,14 +307,15 @@ export function FacebookMonitor() {
   const foundNumbers = savedRecords.length
 
   return (
+    <ScrollArea className="h-screen">
     <div
-      className={`min-h-screen transition-colors duration-300 ${
+      className={`w-screen h-screen transition-colors duration-300 ${
         darkMode
           ? "bg-gradient-to-br from-gray-900 to-gray-800 text-white"
           : "bg-gradient-to-br from-blue-50 to-indigo-100 text-gray-900"
       }`}
     >
-      <div className="container mx-auto p-4">
+      <div className="w-full h-full p-2">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
@@ -787,5 +789,7 @@ export function FacebookMonitor() {
         </Tabs>
       </div>
     </div>
+ </ScrollArea>
+
   )
 }

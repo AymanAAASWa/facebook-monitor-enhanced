@@ -1,5 +1,5 @@
 "use client"
-
+import { Avatar } from "@/components/ui/avatar"; // تأكد من وجود استيراد لاسم المكون
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -134,18 +134,23 @@ export function PostCard({
 
     return media
   }
+ 
+ return (
+  <Card
+    className={`${
+      darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"
+    } backdrop-blur-sm hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500`}
+  >
+    <CardContent className="p-4">
 
-  return (
-    <Card
-      className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500`}
-    >
-      <CardContent className="p-4">
+        {/* رأس البطاقة */}
         <div className="flex items-start justify-between mb-3">
+          {/* معلومات المستخدم */}
           <div className="flex items-center gap-3">
             <div className="relative w-10 h-10 rounded-full overflow-hidden shadow-md">
               {post.from?.picture?.data?.url ? (
                 <Image
-                  src={post.from.picture.data.url || "/placeholder.svg"}
+                  src={post.from.picture.data.url}
                   alt={post.from?.name || "User"}
                   fill
                   className="object-cover"
@@ -171,7 +176,9 @@ export function PostCard({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => onPhoneSearch(post.from?.id || "", post.from?.name || "", post.source_name || "")}
+                    onClick={() =>
+                      onPhoneSearch(post.from?.id || "", post.from?.name || "", post.source_name || "")
+                    }
                     disabled={searchingPhones.has(post.from?.id || "")}
                     className="h-5 w-5 p-0 hover:bg-green-100"
                   >
@@ -183,17 +190,18 @@ export function PostCard({
                   </Button>
                 )}
               </div>
+
               <p className="text-xs text-gray-500 mb-1">
                 {post.created_time
                   ? new Date(post.created_time).toLocaleString(language === "ar" ? "ar-EG" : "en-US")
                   : text.unknown}
               </p>
+
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200">
                   {post.source_type === "group" ? text.group : text.page}: {post.source_name}
                 </Badge>
 
-                {/* عرض نتيجة البحث عن الرقم */}
                 {post.from?.id && phoneSearchResults[post.from.id] && (
                   <Badge
                     variant="secondary"
@@ -202,29 +210,29 @@ export function PostCard({
                       phoneSearchResults[post.from.id] === "خطأ في البحث"
                         ? "bg-red-50 border-red-200 text-red-700"
                         : phoneSearchResults[post.from.id] === "جاري البحث..."
-                          ? "bg-yellow-50 border-yellow-200 text-yellow-700"
-                          : "bg-green-50 border-green-200 text-green-700"
+                        ? "bg-yellow-50 border-yellow-200 text-yellow-700"
+                        : "bg-green-50 border-green-200 text-green-700"
                     }`}
                   >
                     <Phone className="w-3 h-3" />
                     {phoneSearchResults[post.from.id]}
-                    {phoneSearchResults[post.from.id] !== "لا يوجد رقم" &&
-                      phoneSearchResults[post.from.id] !== "خطأ في البحث" &&
-                      phoneSearchResults[post.from.id] !== "جاري البحث..." && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(phoneSearchResults[post.from.id])}
-                          className="h-4 w-4 p-0 hover:bg-green-200"
-                        >
-                          <Copy className="w-2 h-2" />
-                        </Button>
-                      )}
+                    {!["لا يوجد رقم", "خطأ في البحث", "جاري البحث..."].includes(phoneSearchResults[post.from.id]) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(phoneSearchResults[post.from.id])}
+                        className="h-4 w-4 p-0 hover:bg-green-200"
+                      >
+                        <Copy className="w-2 h-2" />
+                      </Button>
+                    )}
                   </Badge>
                 )}
               </div>
             </div>
           </div>
+
+          {/* أدوات إضافية */}
           <div className="flex items-center gap-1">
             <Badge variant="outline" className="bg-yellow-50 border-yellow-200 text-xs">
               <Star className="w-3 h-3 mr-1 text-yellow-500" />
@@ -241,235 +249,139 @@ export function PostCard({
           </div>
         </div>
 
-        {post.message && (
-          <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">{post.message}</p>
-          </div>
-        )}
-
-        {getPostMedia(post).length > 0 && (
-          <div className="mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {getPostMedia(post).map((media) => (
-                <div key={media.id} className="relative group">
-                  {media.type === "image" ? (
-                    <div className="relative aspect-square rounded-lg overflow-hidden shadow-lg">
-                      <Image
-                        src={media.url || "/placeholder.svg"}
-                        alt="Post image"
-                        fill
-                        className="object-cover hover:scale-105 transition-transform cursor-pointer"
-                        onClick={() => window.open(media.url, "_blank")}
-                      />
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => downloadMedia(media.url, `image_${media.id}.jpg`)}
-                          className="bg-white/90 hover:bg-white"
-                        >
-                          <DownloadIcon className="w-3 h-3" />
-                        </Button>
+        {/* التعليقات */}
+        {expandedComments.has(post.id) && (
+          <div className="mt-3">
+            {post.comments?.data?.length > 0 ? (
+              <div className="max-h-80 overflow-y-auto border rounded-md bg-gray-50/50 dark:bg-gray-800/50 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800">
+                <div className="space-y-3 p-4">
+                  {post.comments.data.map((comment, index) => (
+                    <div
+                      key={comment.id}
+                      className={`flex gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm border-l-2 border-l-blue-400 ${
+                        index < post.comments.data.length - 1 ? "mb-3" : ""
+                      }`}
+                    >
+                      {/* صورة المعلق */}
+                      <div className="relative w-8 h-8 rounded-full overflow-hidden shadow-md flex-shrink-0">
+                        {comment.from?.picture?.data?.url ? (
+                          <Image
+                            src={comment.from.picture.data.url}
+                            alt={comment.from?.name || "User"}
+                            fill
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-r from-green-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                            {comment.from?.name?.charAt(0) || "?"}
+                          </div>
+                        )}
                       </div>
-                      <div className="absolute bottom-2 left-2">
-                        <Badge variant="secondary" className="bg-white/90">
-                          <ImageIcon className="w-3 h-3 mr-1" />
-                          {text.images}
-                        </Badge>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="relative aspect-video rounded-lg overflow-hidden shadow-lg bg-black">
-                      <video
-                        src={media.url}
-                        className="w-full h-full object-cover"
-                        controls
-                        poster="/placeholder.svg?height=300&width=400"
-                      />
-                      <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => downloadMedia(media.url, `video_${media.id}.mp4`)}
-                          className="bg-white/90 hover:bg-white"
-                        >
-                          <DownloadIcon className="w-3 h-3" />
-                        </Button>
-                      </div>
-                      <div className="absolute bottom-2 left-2">
-                        <Badge variant="secondary" className="bg-white/90">
-                          <Video className="w-3 h-3 mr-1" />
-                          {text.videos}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* قسم التعليقات */}
-        <div className="border-t pt-3">
-          {/* عرض زر التعليقات دائماً مع العدد الصحيح */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onToggleComments(post.id)}
-            className="mb-3 hover:bg-blue-50 text-sm w-full justify-start"
-          >
-            <MessageCircle className="w-4 h-4 mr-2" />
-            {expandedComments.has(post.id) ? (
-              <>
-                <EyeOff className="w-4 h-4 mr-2" />
-                {text.hideComments}
-              </>
-            ) : (
-              <>
-                <Eye className="w-4 h-4 mr-2" />
-                {text.showComments}
-              </>
-            )}
-            <Badge variant="secondary" className="ml-auto text-xs">
-              {post.comments?.summary?.total_count || post.comments?.data?.length || 0}
-            </Badge>
-          </Button>
+                      {/* محتوى التعليق */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                            {comment.from?.name || text.unknown}
+                          </span>
 
-          {/* عرض التعليقات مع التمرير */}
-          {expandedComments.has(post.id) && (
-            <div className="mt-3">
-              {post.comments?.data && post.comments.data.length > 0 ? (
-                <ScrollArea className="h-80 w-full border rounded-md bg-gray-50/50 dark:bg-gray-800/50">
-                  <div className="space-y-3 p-4">
-                    {post.comments.data.map((comment, index) => (
-                      <div
-                        key={comment.id}
-                        className={`flex gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm border-l-2 border-l-blue-400 ${
-                          index < post.comments.data.length - 1 ? 'mb-3' : ''
-                        }`}
-                      >
-                        {/* صورة المستخدم */}
-                        <div className="relative w-8 h-8 rounded-full overflow-hidden shadow-md flex-shrink-0">
-                          {comment.from?.picture?.data?.url ? (
-                            <Image
-                              src={comment.from.picture.data.url}
-                              alt={comment.from?.name || "User"}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gradient-to-r from-green-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
-                              {comment.from?.name?.charAt(0) || "?"}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* محتوى التعليق */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
-                              {comment.from?.name || text.unknown}
-                            </span>
-                            
-                            {/* أزرار الإجراءات */}
-                            <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => window.open(buildUserUrl(comment.from?.id || ""), "_blank")}
+                              className="h-6 w-6 p-0 hover:bg-blue-100"
+                            >
+                              <User className="w-3 h-3" />
+                            </Button>
+                            {comment.from?.id && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => window.open(buildUserUrl(comment.from?.id || ""), "_blank")}
-                                className="h-6 w-6 p-0 hover:bg-blue-100"
+                                onClick={() =>
+                                  onPhoneSearch(comment.from?.id || "", comment.from?.name || "", post.source_name || "")
+                                }
+                                disabled={searchingPhones.has(comment.from?.id || "")}
+                                className="h-6 w-6 p-0 hover:bg-green-100"
                               >
-                                <User className="w-3 h-3" />
+                                {searchingPhones.has(comment.from?.id || "") ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Phone className="w-3 h-3" />
+                                )}
                               </Button>
-                              {comment.from?.id && (
+                            )}
+                          </div>
+
+                          <span className="text-xs text-gray-500 ml-auto">
+                            {comment.created_time
+                              ? new Date(comment.created_time).toLocaleString(language === "ar" ? "ar-EG" : "en-US")
+                              : text.unknown}
+                          </span>
+                        </div>
+
+                        <div className="bg-gray-100 dark:bg-gray-600 p-3 rounded-lg">
+                          <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed break-words">
+                            {comment.message || "لا يوجد نص"}
+                          </p>
+                        </div>
+
+                        {/* إعجابات */}
+                        {comment.like_count > 0 && (
+                          <div className="mt-2">
+                            <Badge variant="outline" className="text-xs bg-red-50 border-red-200 text-red-700">
+                              ❤️ {comment.like_count}
+                            </Badge>
+                          </div>
+                        )}
+
+                        {/* نتيجة بحث الهاتف */}
+                        {comment.from?.id && phoneSearchResults[comment.from.id] && (
+                          <div className="mt-2">
+                            <Badge
+                              variant="secondary"
+                              className={`text-xs flex items-center gap-1 w-fit ${
+                                phoneSearchResults[comment.from.id] === "لا يوجد رقم" ||
+                                phoneSearchResults[comment.from.id] === "خطأ في البحث"
+                                  ? "bg-red-50 border-red-200 text-red-700"
+                                  : phoneSearchResults[comment.from.id] === "جاري البحث..."
+                                  ? "bg-yellow-50 border-yellow-200 text-yellow-700"
+                                  : "bg-green-50 border-green-200 text-green-700"
+                              }`}
+                            >
+                              <Phone className="w-3 h-3" />
+                              {phoneSearchResults[comment.from.id]}
+                              {!["لا يوجد رقم", "خطأ في البحث", "جاري البحث..."].includes(
+                                phoneSearchResults[comment.from.id]
+                              ) && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() =>
-                                    onPhoneSearch(comment.from?.id || "", comment.from?.name || "", post.source_name || "")
-                                  }
-                                  disabled={searchingPhones.has(comment.from?.id || "")}
-                                  className="h-6 w-6 p-0 hover:bg-green-100"
+                                  onClick={() => copyToClipboard(phoneSearchResults[comment.from.id])}
+                                  className="h-4 w-4 p-0 hover:bg-green-200 ml-1"
                                 >
-                                  {searchingPhones.has(comment.from?.id || "") ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <Phone className="w-3 h-3" />
-                                  )}
+                                  <Copy className="w-2 h-2" />
                                 </Button>
                               )}
-                            </div>
-
-                            <span className="text-xs text-gray-500 ml-auto">
-                              {comment.created_time
-                                ? new Date(comment.created_time).toLocaleString(language === "ar" ? "ar-EG" : "en-US")
-                                : text.unknown}
-                            </span>
+                            </Badge>
                           </div>
-
-                          {/* نص التعليق */}
-                          <div className="bg-gray-100 dark:bg-gray-600 p-3 rounded-lg">
-                            <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed break-words">
-                              {comment.message || "لا يوجد نص"}
-                            </p>
-                          </div>
-
-                          {/* إعجابات التعليق */}
-                          {comment.like_count && comment.like_count > 0 && (
-                            <div className="mt-2">
-                              <Badge variant="outline" className="text-xs bg-red-50 border-red-200 text-red-700">
-                                ❤️ {comment.like_count}
-                              </Badge>
-                            </div>
-                          )}
-
-                          {/* عرض نتيجة البحث عن الرقم للمعلق */}
-                          {comment.from?.id && phoneSearchResults[comment.from.id] && (
-                            <div className="mt-2">
-                              <Badge
-                                variant="secondary"
-                                className={`text-xs flex items-center gap-1 w-fit ${
-                                  phoneSearchResults[comment.from.id] === "لا يوجد رقم" ||
-                                  phoneSearchResults[comment.from.id] === "خطأ في البحث"
-                                    ? "bg-red-50 border-red-200 text-red-700"
-                                    : phoneSearchResults[comment.from.id] === "جاري البحث..."
-                                      ? "bg-yellow-50 border-yellow-200 text-yellow-700"
-                                      : "bg-green-50 border-green-200 text-green-700"
-                                }`}
-                              >
-                                <Phone className="w-3 h-3" />
-                                {phoneSearchResults[comment.from.id]}
-                                {phoneSearchResults[comment.from.id] !== "لا يوجد رقم" &&
-                                  phoneSearchResults[comment.from.id] !== "خطأ في البحث" &&
-                                  phoneSearchResults[comment.from.id] !== "جاري البحث..." && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => copyToClipboard(phoneSearchResults[comment.from.id])}
-                                      className="h-4 w-4 p-0 hover:bg-green-200 ml-1"
-                                    >
-                                      <Copy className="w-2 h-2" />
-                                    </Button>
-                                  )}
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              ) : (
-                <div className="text-center py-6 text-gray-500 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                  <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm">{text.noComments}</p>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  )
+              </div>
+            ) : (
+              <div className="text-center py-6 text-gray-500 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                <p className="text-sm">{text.noComments}</p>
+              </div>
+            )}
+          </div>
+        )}
+      
+    </CardContent>
+  </Card>
+);
+
 }
