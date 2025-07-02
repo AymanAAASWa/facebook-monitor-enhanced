@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -31,7 +31,15 @@ import {
   Globe,
   GitBranch,
   Package,
-  Terminal
+  Terminal,
+  Eye,
+  ExternalLink,
+  Copy,
+  Layers,
+  Cpu,
+  Monitor,
+  Smartphone,
+  Phone
 } from "lucide-react"
 
 interface DocumentationExportProps {
@@ -39,7 +47,118 @@ interface DocumentationExportProps {
   language: "ar" | "en"
 }
 
-// بيانات شجرة الملفات مع التفاصيل الشاملة
+// محتوى ملف project-documentation.md مدمج في الكود
+const projectDocumentation = `# Facebook Monitor - مستند المشروع
+
+## آخر التحديثات
+
+### تحديث 2024-01-31: تحسين واجهة المستخدم للأجهزة المحمولة واللوحية وأجهزة الكمبيوتر
+
+#### المشاكل التي تم حلها:
+1. **مشكلة أزرار المستخدم**: تم إصلاح مشكلة وجود زرين ("عرض المنشورات" و "عرض التفاصيل") يقومان بنفس الوظيفة
+2. **البيانات الفارغة**: تم حل مشكلة عودة البيانات فارغة في عارض تحليلات المستخدم
+3. **التحسين للأجهزة المختلفة**: تم تحسين جميع المكونات للعمل بكفاءة على الموبايل والتابلت وأجهزة الكمبيوتر
+
+#### التحسينات المضافة:
+
+##### 1. تحسين مكون EnhancedPostsList:
+- **أزرار منفصلة للمستخدمين**:
+  - زر "عرض المنشورات" (FileText icon): يفتح عارض منشورات المستخدم الفردية
+  - زر "عرض التحليلات" (BarChart3 icon): يفتح عارض التحليلات التفصيلية
+- **تحسين الاستجابة**:
+  - شبكة مرنة للبحث والتصفية (1 عمود للموبايل، 2 للتابلت، 4 للكمبيوتر)
+  - تحسين أحجام الخطوط والأيقونات حسب حجم الشاشة
+  - تحسين المسافات والحشو للأجهزة المختلفة
+
+## نظرة عامة على المشروع
+
+Facebook Monitor هو تطبيق ويب متقدم لمراقبة وتحليل البيانات من Facebook، مبني باستخدام Next.js و TypeScript.
+
+### الميزات الرئيسية:
+- مراقبة المنشورات والتعليقات
+- البحث عن أرقام الهواتف
+- تحليلات المستخدمين
+- إدارة التعليقات والردود
+- تصدير البيانات والتقارير
+- واجهة متجاوبة لجميع الأجهزة
+
+### البنية التقنية:
+- **Frontend**: Next.js 15, React 18, TypeScript
+- **Styling**: Tailwind CSS, Shadcn/ui
+- **Backend**: Next.js API Routes
+- **قاعدة البيانات**: Firebase (اختياري)
+- **تخزين الملفات**: Google Drive API
+
+### المتطلبات:
+- Node.js 18+
+- Facebook Access Token
+- اتصال إنترنت مستقر
+
+### التثبيت والتشغيل:
+\`\`\`bash
+npm install
+npm run dev
+\`\`\``
+
+// محتوى ملف site-map.md مدمج في الكود
+const siteMapContent = `# خريطة الموقع - مراقب فيسبوك المتقدم
+
+## 🗺️ الهيكل العام للموقع
+
+### 📱 الصفحة الرئيسية (\`/\`)
+- **الوصف**: نقطة البداية للتطبيق
+- **المكونات**:
+  - شريط التنقل العلوي
+  - لوحة التحكم الرئيسية
+  - إحصائيات سريعة
+  - أزرار الوصول السريع
+
+### 🔐 نظام التوثيق
+#### تسجيل الدخول (\`/auth/login\`)
+- **الوظيفة**: تسجيل الدخول للمستخدمين
+- **الميزات**:
+  - تسجيل دخول بالبريد الإلكتروني
+  - تسجيل دخول بـ Facebook
+  - تسجيل دخول بـ Google
+  - حفظ بيانات الجلسة
+
+### 📊 لوحات التحكم
+
+#### 🏠 لوحة التحكم الرئيسية (\`/dashboard\`)
+- **المحتوى**:
+  - إحصائيات عامة
+  - آخر المنشورات
+  - التنبيهات المهمة
+  - الوصول السريع للأدوات
+
+#### 📈 لوحة التحليلات (\`/analytics\`)
+- **الأقسام**:
+  - تحليلات المنشورات
+  - إحصائيات المستخدمين
+  - تحليل التفاعل
+  - الرسوم البيانية
+  - التقارير المفصلة
+
+### 📱 إدارة المحتوى
+
+#### 📝 المنشورات (\`/posts\`)
+- **الميزات**:
+  - عرض جميع المنشورات
+  - فلترة حسب المصدر
+  - البحث في المحتوى
+  - عرض التعليقات
+  - تحميل الوسائط
+
+## 🧭 مسارات التنقل الرئيسية
+
+### 🏃‍♂️ المسار السريع للمبتدئين
+1. **البداية** → \`/\` (الصفحة الرئيسية)
+2. **التوثيق** → \`/auth/login\` (تسجيل الدخول)
+3. **الإعداد** → \`/settings/facebook\` (إعداد Facebook API)
+4. **البيانات** → \`/phone-database\` (تحميل قاعدة الأرقام)
+5. **المراقبة** → \`/posts\` (بدء المراقبة)`
+
+// بيانات هيكل المشروع المفصل مع الأكواد والشرح
 interface FileNode {
   name: string
   type: "file" | "folder"
@@ -56,154 +175,200 @@ interface FileNode {
   color?: string
   size?: string
   lastModified?: string
+  codeExample?: string
+  fullCode?: string
+  explanation?: string
 }
 
 const projectStructure: { [key: string]: FileNode } = {
   app: {
     name: "app",
     type: "folder",
-    description: "صفحات ومسارات Next.js الرئيسية - قلب التطبيق",
-    purpose: "يحتوي على الصفحات الرئيسية وAPI routes وتخطيط التطبيق",
+    description: "مجلد التطبيق الرئيسي - Next.js App Router",
+    purpose: "يحتوي على جميع صفحات التطبيق والمسارات وAPI routes",
     functionality: [
-      "إدارة المسارات (Routing)",
+      "إدارة المسارات (App Router)",
       "صفحات التطبيق الرئيسية",
       "API endpoints للخدمات",
-      "تخطيط التطبيق العام"
+      "تخطيط التطبيق العام (Layout)",
+      "أنماط CSS العامة"
     ],
+    techStack: ["Next.js 15", "App Router", "TypeScript", "React Server Components"],
     importance: "critical",
     icon: Folder,
     color: "text-blue-500",
-    thumbnail: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjMjU2M2ViIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QVBQPC90ZXh0Pgo8L3N2Zz4=",
+    explanation: "مجلد app هو قلب التطبيق في Next.js 13+ مع App Router. يحتوي على جميع الصفحات والتخطيطات وAPI routes.",
     children: {
       "page.tsx": {
         name: "page.tsx",
         type: "file",
-        description: "الصفحة الرئيسية للتطبيق - نقطة الدخول الأساسية",
-        purpose: "عرض لوحة التحكم الرئيسية والإحصائيات العامة للمستخدم",
+        description: "الصفحة الرئيسية للتطبيق",
+        purpose: "عرض لوحة التحكم الرئيسية مع جميع مكونات المراقبة",
         functionality: [
-          "عرض الإحصائيات العامة",
-          "لوحة تحكم رئيسية",
-          "نقاط الوصول السريع",
-          "حالة النظام العامة"
+          "عرض مكون FacebookMonitor الرئيسي",
+          "إدارة حالة التطبيق العامة",
+          "تنسيق التخطيط العام للصفحة",
+          "ربط جميع المكونات معاً"
         ],
         dependencies: [
           "components/facebook-monitor.tsx",
-          "components/analytics-dashboard.tsx", 
-          "lib/firebase-service.ts",
+          "components/analytics-dashboard.tsx",
           "lib/app-context.tsx"
         ],
-        connectedTo: [
-          "layout.tsx (التخطيط العام)",
-          "components/* (جميع المكونات)",
-          "lib/* (الخدمات)"
-        ],
-        techStack: ["Next.js 15", "React 18", "TypeScript"],
+        techStack: ["Next.js", "React", "TypeScript"],
         importance: "critical",
         icon: Code,
         color: "text-green-500",
-        size: "~8KB",
-        thumbnail: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjMTBiOTgxIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SG9tZTwvdGV4dD4KPC9zdmc+"
+        size: "~2KB",
+        codeExample: `export default function Home() {
+  return (
+    <main className="container mx-auto p-4">
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">مراقب فيسبوك المتقدم</h1>
+        <FacebookMonitor />
+      </div>
+    </main>
+  )
+}`,
+        explanation: "هذا هو الملف الرئيسي للصفحة الأولى. يستخدم Next.js App Router ويعرض المكون الرئيسي FacebookMonitor مع تصميم جميل ومتجاوب."
       },
       "layout.tsx": {
         name: "layout.tsx",
-        type: "file", 
-        description: "هيكل التطبيق العام - يحدد التخطيط لجميع الصفحات",
-        purpose: "تحديد الهيكل العام للتطبيق مع Header, Sidebar, Footer وإدارة الحالة العامة",
+        type: "file",
+        description: "التخطيط العام للتطبيق",
+        purpose: "يحدد الهيكل العام لجميع صفحات التطبيق",
         functionality: [
-          "تخطيط التطبيق الأساسي",
-          "إدارة الثيم (فاتح/داكن)",
-          "شريط التنقل العلوي",
-          "الشريط الجانبي",
-          "إدارة السياق العام"
+          "تحديد HTML و body tags",
+          "تضمين الخطوط والأنماط العامة",
+          "إعداد Providers (Context, Theme)",
+          "تطبيق التصميم المتجاوب",
+          "إعداد metadata للتطبيق"
         ],
         dependencies: [
+          "globals.css",
           "components/theme-provider.tsx",
-          "lib/app-context.tsx",
-          "components/ui/*",
-          "globals.css"
+          "lib/app-context.tsx"
         ],
-        connectedTo: [
-          "جميع الصفحات في app/",
-          "components/* (المكونات المشتركة)",
-          "lib/utils.ts (المساعدات)"
-        ],
-        techStack: ["Next.js", "React Context", "Tailwind CSS"],
+        techStack: ["Next.js", "React", "TypeScript", "Tailwind CSS"],
         importance: "critical",
-        icon: Code,
+        icon: Layers,
         color: "text-purple-500",
-        size: "~5KB",
-        thumbnail: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjOGI1Y2Y2Ii8+Cjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TGF5b3V0PC90ZXh0Pgo8L3N2Zz4="
+        size: "~3KB",
+        codeExample: `export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="ar" dir="rtl">
+      <body className="font-cairo">
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  )
+}`,
+        explanation: "ملف التخطيط الجذر الذي يحيط بجميع صفحات التطبيق. يحدد اللغة العربية واتجاه RTL ويضمن المزودين العامين."
       },
       "globals.css": {
         name: "globals.css",
         type: "file",
-        description: "التنسيقات العامة والمتغيرات - أساس التصميم",
-        purpose: "تحديد التنسيقات الأساسية، الألوان، الخطوط، والمتغيرات العامة للتطبيق",
+        description: "الأنماط العامة للتطبيق",
+        purpose: "تحديد المتغيرات والأنماط الأساسية لجميع صفحات التطبيق",
         functionality: [
-          "متغيرات الألوان CSS",
-          "خطوط التطبيق",
-          "تنسيقات Tailwind الأساسية",
-          "تنسيقات الثيم المظلم/الفاتح",
-          "أنماط المكونات العامة"
+          "متغيرات الألوان للثيم الفاتح والداكن",
+          "خطوط التطبيق (Arabic fonts)",
+          "أنماط Tailwind الأساسية",
+          "أنماط مخصصة للمكونات",
+          "تنسيقات RTL للعربية"
         ],
         dependencies: ["tailwind.config.ts", "postcss.config.mjs"],
-        connectedTo: [
-          "جميع مكونات التطبيق",
-          "components/ui/* (مكونات الواجهة)",
-          "tailwind.config.ts (إعدادات)"
-        ],
         techStack: ["CSS3", "Tailwind CSS", "CSS Variables"],
         importance: "high",
         icon: Palette,
         color: "text-pink-500",
-        size: "~3KB"
+        size: "~5KB",
+        codeExample: `:root {
+  --primary: 222.2 84% 4.9%;
+  --secondary: 210 40% 96%;
+  --accent: 210 40% 96%;
+}
+
+body {
+  font-family: 'Cairo', 'Segoe UI', sans-serif;
+  direction: rtl;
+}`,
+        explanation: "ملف الأنماط الرئيسي الذي يحدد جميع المتغيرات والأنماط الأساسية. يدعم الثيم الداكن والفاتح والخطوط العربية."
       },
       api: {
         name: "api",
         type: "folder",
-        description: "API Routes للتطبيق - نقاط النهاية للخدمات",
-        purpose: "يحتوي على جميع نقاط API للتفاعل مع Facebook API والخدمات الخارجية",
+        description: "مجلد API Routes للتطبيق",
+        purpose: "يحتوي على جميع endpoints الخاصة بالخدمات الخلفية",
         functionality: [
-          "التفاعل مع Facebook API",
-          "التحقق من صحة الرموز",
-          "جلب المنشورات والتعليقات",
-          "إدارة بيانات المستخدمين"
+          "API routes لـ Facebook",
+          "معالجة طلبات البيانات",
+          "التحقق من التوثيق",
+          "إدارة الأخطاء",
+          "ربط مع قواعد البيانات"
         ],
-        dependencies: ["lib/facebook-service.ts", "lib/firebase-service.ts"],
-        connectedTo: [
-          "components/* (المكونات التي تستدعي API)",
-          "lib/* (الخدمات)",
-          "Frontend components"
-        ],
-        techStack: ["Next.js API Routes", "TypeScript"],
         importance: "critical",
         icon: Database,
         color: "text-orange-500",
-        thumbnail: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjZWE1ODBjIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QVBJPC90ZXh0Pgo8L3N2Zz4=",
         children: {
           facebook: {
             name: "facebook",
             type: "folder",
-            description: "خدمات Facebook API المتخصصة",
-            purpose: "إدارة جميع العمليات المتعلقة بـ Facebook API",
+            description: "API routes خاصة بـ Facebook",
+            purpose: "معالجة جميع طلبات Facebook API",
             children: {
               "posts/route.ts": {
-                name: "posts/route.ts",
+                name: "route.ts",
                 type: "file",
-                description: "API لجلب المنشورات من Facebook",
-                purpose: "جلب وتحليل المنشورات من المجموعات والصفحات",
+                description: "API endpoint لجلب المنشورات",
+                purpose: "جلب وإدارة منشورات Facebook",
                 functionality: [
-                  "جلب المنشورات من Facebook",
-                  "تحليل البيانات المستلمة",
-                  "فلترة المحتوى",
-                  "تحويل البيانات للتنسيق المطلوب"
+                  "GET: جلب المنشورات من Facebook",
+                  "POST: إنشاء منشور جديد",
+                  "معالجة الأخطاء",
+                  "التحقق من Access Token",
+                  "حفظ البيانات في قاعدة البيانات"
                 ],
-                dependencies: ["lib/facebook-service.ts"],
-                connectedTo: ["components/posts-list.tsx", "components/facebook-monitor.tsx"],
+                techStack: ["Next.js API Routes", "Facebook Graph API", "TypeScript"],
                 importance: "critical",
                 icon: Code,
-                color: "text-blue-500",
-                size: "~4KB"
+                color: "text-blue-600",
+                codeExample: `export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const source = searchParams.get('source')
+
+    const facebookService = new FacebookService()
+    const posts = await facebookService.getPosts({ source })
+
+    return NextResponse.json({ success: true, data: posts })
+  } catch (error) {
+    return NextResponse.json({ success: false, error }, { status: 500 })
+  }
+}`,
+                explanation: "API endpoint يتعامل مع جلب المنشورات من Facebook Graph API ويرجع البيانات بتنسيق JSON."
+              },
+              "comments/route.ts": {
+                name: "route.ts", 
+                type: "file",
+                description: "API endpoint للتعليقات",
+                purpose: "إدارة تعليقات Facebook",
+                functionality: [
+                  "جلب تعليقات المنشورات",
+                  "إضافة تعليقات جديدة",
+                  "حذف وتعديل التعليقات",
+                  "فلترة التعليقات",
+                  "إحصائيات التعليقات"
+                ],
+                importance: "high",
+                icon: Code,
+                color: "text-green-600"
               }
             }
           }
@@ -214,58 +379,252 @@ const projectStructure: { [key: string]: FileNode } = {
   components: {
     name: "components",
     type: "folder",
-    description: "مكونات React القابلة لإعادة الاستخدام - عقل التطبيق",
-    purpose: "يحتوي على جميع مكونات واجهة المستخدم والمنطق التفاعلي للتطبيق",
+    description: "مجلد المكونات القابلة لإعادة الاستخدام",
+    purpose: "يحتوي على جميع مكونات React الخاصة بالتطبيق",
     functionality: [
-      "واجهات المستخدم التفاعلية",
-      "إدارة الحالة المحلية",
-      "التفاعل مع المستخدم",
-      "عرض البيانات"
+      "مكونات واجهة المستخدم",
+      "مكونات إدارة البيانات",
+      "مكونات التحليلات",
+      "مكونات النماذج",
+      "مكونات العرض"
     ],
     importance: "critical",
     icon: Folder,
     color: "text-green-500",
-    thumbnail: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjMTBiOTgxIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Q29tcG9uZW50czwvdGV4dD4KPC9zdmc+",
     children: {
       "facebook-monitor.tsx": {
         name: "facebook-monitor.tsx",
         type: "file",
-        description: "مراقب Facebook الرئيسي - المكون الأساسي للمراقبة",
-        purpose: "المكون الأساسي لمراقبة وعرض بيانات Facebook مع جميع الميزات المتقدمة",
+        description: "المكون الرئيسي لمراقبة Facebook",
+        purpose: "المكون الأساسي الذي يجمع جميع وظائف المراقبة",
         functionality: [
-          "مراقبة المنشورات والتعليقات",
-          "عرض البيانات في الوقت الفعلي",
-          "إدارة المصادر (مجموعات وصفحات)",
-          "البحث والفلترة المتقدمة",
-          "تحديث البيانات التلقائي"
+          "واجهة المراقبة الرئيسية",
+          "تبويبات للمنشورات والتعليقات والتحليلات",
+          "إدارة حالة البيانات",
+          "ربط مع Facebook API",
+          "عرض النتائج والإحصائيات"
         ],
         dependencies: [
-          "lib/facebook-service.ts",
-          "lib/firebase-service.ts",
-          "components/posts-list.tsx",
-          "components/user-table.tsx",
-          "components/analytics-dashboard.tsx"
+          "enhanced-posts-list.tsx",
+          "analytics-dashboard.tsx",
+          "user-analytics-viewer.tsx",
+          "lib/enhanced-facebook-service.ts"
         ],
-        connectedTo: [
-          "app/page.tsx (الصفحة الرئيسية)",
-          "جميع مكونات البيانات",
-          "خدمات API",
-          "قاعدة البيانات"
-        ],
-        techStack: ["React 18", "TypeScript", "Tailwind CSS", "Lucide Icons"],
+        techStack: ["React 18", "TypeScript", "Tailwind CSS", "Shadcn/ui"],
         importance: "critical",
-        icon: Code,
+        icon: Monitor,
         color: "text-blue-500",
-        size: "~15KB",
-        thumbnail: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjMTg3N2YyIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+RkIgTW9uaXRvcjwvdGV4dD4KPC9zdmc+"
+        size: "~12KB",
+        codeExample: `export function FacebookMonitor() {
+  const [activeTab, setActiveTab] = useState('posts')
+  const [posts, setPosts] = useState([])
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>مراقب فيسبوك المتقدم</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="posts">المنشورات</TabsTrigger>
+            <TabsTrigger value="analytics">التحليلات</TabsTrigger>
+          </TabsList>
+          <TabsContent value="posts">
+            <EnhancedPostsList posts={posts} />
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
+  )
+}`,
+        explanation: "المكون الرئيسي الذي يجمع جميع وظائف المراقبة في واجهة موحدة مع تبويبات منظمة."
+      },
+      "enhanced-posts-list.tsx": {
+        name: "enhanced-posts-list.tsx",
+        type: "file", 
+        description: "قائمة المنشورات المحسنة",
+        purpose: "عرض وإدارة منشورات Facebook بواجهة متقدمة",
+        functionality: [
+          "عرض المنشورات مع معلومات تفصيلية",
+          "البحث والفلترة المتقدمة",
+          "أزرار للتحليلات والمنشورات الفردية",
+          "عرض الوسائط والمرفقات",
+          "إحصائيات التفاعل",
+          "واجهة متجاوبة للجوال"
+        ],
+        dependencies: [
+          "user-analytics-viewer.tsx",
+          "lib/enhanced-facebook-service.ts",
+          "lib/phone-search-service.ts"
+        ],
+        importance: "critical",
+        icon: FileText,
+        color: "text-green-600",
+        size: "~25KB",
+        explanation: "مكون متقدم لعرض المنشورات مع ميزات البحث والتحليل وواجهة محسنة للجوال."
+      },
+      "user-analytics-viewer.tsx": {
+        name: "user-analytics-viewer.tsx",
+        type: "file",
+        description: "عارض تحليلات المستخدم",
+        purpose: "عرض تحليلات تفصيلية لنشاط المستخدمين",
+        functionality: [
+          "إحصائيات شاملة للمستخدم",
+          "تحليل أنماط النشاط",
+          "رسوم بيانية تفاعلية",
+          "تبويبات متعددة للبيانات",
+          "معدلات التفاعل",
+          "النشاط عبر الوقت"
+        ],
+        importance: "high",
+        icon: Cpu,
+        color: "text-purple-600",
+        codeExample: `// مكون تحليلات المستخدم المفصلة - محسن
+export function UserAnalyticsViewer({
+  userId,
+  posts,
+  darkMode,
+  language,
+  onClose,
+}: UserAnalyticsViewerProps) {
+  // حساب إحصائيات شاملة مع نظام النقاط الجديد
+  const userStats = useMemo(() => {
+    // نقاط النشاط: منشور=10، تعليق=5، إعجاب=2، مشاركة=15
+    const activityScore = (userPosts.length * 10) + (userComments.length * 5) + 
+                         (totalLikes * 2) + (totalShares * 15)
+
+    // نقاط التأثير: متوسط التفاعل × جودة المحتوى
+    const influenceScore = Math.round(((totalLikes + totalShares) / 
+                          Math.max(userPosts.length, 1)) * 10) / 10
+
+    return {
+      totalPosts, totalComments, totalLikes, totalShares,
+      activityScore, influenceScore, engagementRate,
+      activityTimeline // يشمل المشاركات الآن
+    }
+  }, [userId, posts])
+
+  return (
+    <div className="space-y-6">
+      {/* 6 بطاقات إحصائيات: المنشورات، التعليقات، الإعجابات، المشاركات، نقاط النشاط، نقاط التأثير */}
+      {/* تبويبات محسنة مع تفاصيل أكثر */}
+    </div>
+  )
+}`,
+        explanation: "مكون متخصص في عرض تحليلات عميقة لنشاط المستخدمين الفرديين.",
+            children: [
+              {
+                name: "demographics-map-viewer.tsx",
+                type: "file",
+                description: "مكون جديد لعرض الديموغرافيا والخريطة",
+                purpose: "عرض معلومات ديموغرافية للمستخدمين وتوزيعهم الجغرافي",
+                codeExample: `// مكون جديد لعرض الديموغرافيا والخريطة
+export function DemographicsMapViewer({ users, darkMode, language }: DemographicsMapViewerProps) {
+  // تحليل الديموغرافيا
+  const demographics = useMemo(() => {
+    // تجميع الأعمار في فئات (18-24، 25-34، إلخ)
+    const ageGroups = {
+      "18-24": users.filter(u => u.age >= 18 && u.age <= 24).length,
+      "25-34": users.filter(u => u.age >= 25 && u.age <= 34).length,
+      // ...المزيد
+    }
+
+    // تحليل المواقع الجغرافية
+    const locationCounts = users.reduce((acc, user) => {
+      const location = user.location || "غير محدد"
+      acc[location] = (acc[location] || 0) + 1
+      return acc
+    }, {})
+
+    // تحديد المستخدمين المميزين (VIP)
+    const vipUsers = users
+      .filter(u => u.activityScore > 100 || u.influenceScore > 50)
+      .sort((a, b) => (b.activityScore + b.influenceScore) - (a.activityScore + a.influenceScore))
+
+    // تتبع أعياد الميلاد القادمة
+    const upcomingBirthdays = users
+      .filter(u => u.birthday)
+      .map(u => calculateDaysUntilBirthday(u.birthday))
+      .sort((a, b) => a.daysUntil - b.daysUntil)
+
+    return { ageGroups, locationCounts, vipUsers, upcomingBirthdays }
+  }, [users])
+
+  return (
+    <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+      <TabsList>
+        <TabsTrigger value="map">الخريطة</TabsTrigger>
+        <TabsTrigger value="ages">الأعمار</TabsTrigger>
+        <TabsTrigger value="locations">المواقع</TabsTrigger>
+        <TabsTrigger value="vip">المستخدمون المميزون</TabsTrigger>
+        <TabsTrigger value="birthdays">أعياد الميلاد</TabsTrigger>
+      </TabsList>
+
+      {/* محتوى كل تبويب مع تصور البيانات */}
+    </Tabs>
+  )
+}
+
+// الواجهات المطلوبة
+interface UserDemographic {
+  id: string
+  name: string
+  age?: number
+  location?: string
+  work?: string
+  birthday?: string
+  activityScore: number
+  influenceScore: number
+  isVIP?: boolean
+}`,
+              }
+            ]
+      },
+      ui: {
+        name: "ui",
+        type: "folder",
+        description: "مكونات واجهة المستخدم الأساسية",
+        purpose: "مكونات Shadcn/ui للواجهة",
+        functionality: [
+          "أزرار وحقول إدخال",
+          "بطاقات وحوارات",
+          "تبويبات وقوائم",
+          "عناصر التنقل",
+          "مكونات النماذج"
+        ],
+        importance: "high",
+        icon: Smartphone,
+        color: "text-gray-500",
+        children: {
+          "button.tsx": {
+            name: "button.tsx",
+            type: "file",
+            description: "مكون الأزرار",
+            purpose: "أزرار قابلة للتخصيص مع أنماط متعددة",
+            techStack: ["React", "TypeScript", "Tailwind CSS", "Class Variance Authority"],
+            importance: "medium",
+            icon: Code,
+            color: "text-blue-400"
+          },
+          "card.tsx": {
+            name: "card.tsx", 
+            type: "file",
+            description: "مكون البطاقات",
+            purpose: "بطاقات لعرض المحتوى مع رأس وقدم",
+            importance: "medium",
+            icon: Code,
+            color: "text-green-400"
+          }
+        }
       }
     }
   },
   lib: {
     name: "lib",
     type: "folder",
-    description: "خدمات ومكتبات مساعدة - عقل العمليات",
-    purpose: "يحتوي على جميع المنطق التجاري والخدمات والأدوات المساعدة للتطبيق",
+    description: "مكتبة الخدمات والأدوات المساعدة",
+    purpose: "يحتوي على جميع المنطق التجاري والخدمات",
     functionality: [
       "خدمات Facebook API",
       "إدارة قواعد البيانات",
@@ -276,99 +635,151 @@ const projectStructure: { [key: string]: FileNode } = {
     importance: "critical",
     icon: Database,
     color: "text-yellow-500",
-    thumbnail: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjZWFiMzA4Ii8+Cjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TElCPC90ZXh0Pgo8L3N2Zz4=",
     children: {
-      "facebook-service.ts": {
-        name: "facebook-service.ts",
+      "enhanced-facebook-service.ts": {
+        name: "enhanced-facebook-service.ts",
         type: "file",
-        description: "خدمة Facebook API الأساسية - التفاعل الأساسي مع Facebook",
-        purpose: "توفير الوظائف الأساسية للتفاعل مع Facebook Graph API",
+        description: "خدمة Facebook المحسنة",
+        purpose: "التعامل مع Facebook Graph API بشكل متقدم",
         functionality: [
-          "جلب المنشورات من المجموعات",
-          "جلب بيانات الصفحات",
-          "إدارة Access Tokens",
-          "التعامل مع حدود API",
-          "معالجة الأخطاء"
+          "جلب المنشورات مع بيانات شاملة",
+          "تحليل التفاعلات والتعليقات",
+          "البحث عن أرقام الهواتف",
+          "معالجة الوسائط والمرفقات",
+          "إدارة حدود API والأخطاء"
         ],
-        dependencies: ["axios", "facebook-oauth-service"],
-        connectedTo: [
-          "app/api/facebook/*/route.ts",
-          "components/facebook-monitor.tsx",
-          "enhanced-facebook-service.ts"
-        ],
-        techStack: ["JavaScript/TypeScript", "Facebook Graph API", "Axios"],
+        dependencies: ["facebook-service.ts", "phone-search-service.ts"],
+        techStack: ["TypeScript", "Facebook Graph API", "Axios"],
         importance: "critical",
         icon: Code,
-        color: "text-blue-500",
-        size: "~8KB",
-        thumbnail: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjMzc1NGRiIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+RkIgU2VydmljZTwvdGV4dD4KPC9zdmc+"
+        color: "text-blue-600",
+        size: "~15KB",
+        codeExample: `export class EnhancedFacebookService {
+  async getEnhancedPosts(options: PostOptions): Promise<Post[]> {
+    const posts = await this.fetchPosts(options)
+    return await Promise.all(
+      posts.map(post => this.enhancePost(post))
+    )
+  }
+
+  private async enhancePost(post: FacebookPost): Promise<Post> {
+    const phoneNumber = await this.searchAuthorPhone(post.from.id)
+    return {
+      ...post,
+      author: { ...post.from, phoneNumber }
+    }
+  }
+}`,
+        explanation: "خدمة متقدمة تتعامل مع Facebook API وتضيف ميزات إضافية مثل البحث عن أرقام الهواتف."
+      },
+      "phone-search-service.ts": {
+        name: "phone-search-service.ts",
+        type: "file",
+        description: "خدمة البحث عن أرقام الهواتف",
+        purpose: "البحث وإدارة قاعدة بيانات أرقام الهواتف",
+        functionality: [
+          "البحث بالاسم والرقم",
+          "إدارة قاعدة البيانات",
+          "فهرسة البيانات للبحث السريع",
+          "تحميل من مصادر متعددة",
+          "تصدير واستيراد البيانات"
+        ],
+        importance: "high",
+        icon: Phone,
+        color: "text-green-600",
+        explanation: "خدمة متخصصة في البحث عن أرقام الهواتف مع فهرسة متقدمة وبحث سريع."
+      }
+    }
+  },
+  docs: {
+    name: "docs",
+    type: "folder",
+    description: "ملفات التوثيق والمساعدة",
+    purpose: "يحتوي على جميع ملفات التوثيق والشروحات",
+    functionality: [
+      "توثيق المشروع الشامل",
+      "خريطة هيكل الملفات",
+      "خريطة الموقع والتنقل",
+      "أدلة الاستخدام",
+      "شرح الميزات الجديدة"
+    ],
+    importance: "high",
+    icon: BookOpen,
+    color: "text-indigo-500",
+    children: {
+      "project-documentation.md": {
+        name: "project-documentation.md",
+        type: "file",
+        description: "التوثيق الشامل للمشروع",
+        purpose: "شرح كامل للمشروع وميزاته وآخر التحديثات",
+        size: "~15KB",
+        icon: FileText,
+        color: "text-blue-600",
+        fullCode: projectDocumentation,
+        explanation: "ملف التوثيق الرئيسي الذي يشرح المشروع وميزاته وآخر التحديثات بالتفصيل."
+      },
+      "site-map.md": {
+        name: "site-map.md",
+        type: "file",
+        description: "خريطة الموقع وطرق التنقل",
+        purpose: "دليل التنقل في التطبيق مع التحسينات",
+        size: "~12KB",
+        icon: Globe,
+        color: "text-purple-600",
+        fullCode: siteMapContent,
+        explanation: "خريطة شاملة للموقع تساعد في التنقل وفهم هيكل التطبيق."
       }
     }
   }
 }
 
 export function DocumentationExport({ darkMode, language }: DocumentationExportProps) {
-  const [exporting, setExporting] = useState(false)
-  const [exportStatus, setExportStatus] = useState<{ type: "success" | "error"; message: string } | null>(null)
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(["app", "components", "lib"]))
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(["app", "components", "lib", "docs"]))
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
+  const [showCode, setShowCode] = useState<string | null>(null)
 
   const t = {
     ar: {
-      title: "تصدير التوثيق",
-      description: "تحميل دليل المستخدم الشامل للمشروع مع خريطة الملفات التفصيلية",
-      formats: "التنسيقات المتاحة",
-      exportTxt: "تصدير TXT", 
-      exportHtml: "تصدير HTML",
-      exporting: "جاري التصدير...",
-      success: "تم التصدير بنجاح",
-      error: "خطأ في التصدير",
-      features: "محتويات الدليل",
-      feature1: "دليل الإعداد الكامل",
-      feature2: "شرح جميع الميزات",
-      feature3: "حل المشاكل الشائعة",
-      feature4: "أفضل الممارسات",
-      feature5: "المتطلبات التقنية",
-      feature6: "الأمان والخصوصية",
-      note: "ملاحظة",
-      noteText: "الدليل يحتوي على معلومات شاملة لاستخدام جميع ميزات المشروع بفعالية",
-      searchPlaceholder: "البحث في الملفات...",
-      fileDetails: "تفاصيل الملف",
-      dependencies: "التبعيات",
-      connectedTo: "مرتبط بـ",
+      title: "توثيق المشروع التفاعلي",
+      description: "استكشف هيكل المشروع والأكواد بالتفصيل",
+      search: "البحث في الملفات...",
+      viewCode: "عرض الكود",
+      hideCode: "إخفاء الكود",
+      copyCode: "نسخ الكود",
+      explanation: "الشرح",
       functionality: "الوظائف",
-      techStack: "التقنيات المستخدمة",
+      dependencies: "التبعيات",
+      techStack: "التقنيات",
       importance: "الأهمية",
-      size: "الحجم"
+      size: "الحجم",
+      exportHtml: "تصدير HTML",
+      exportJson: "تصدير JSON",
+      fileStructure: "هيكل الملفات التفاعلي",
+      projectDocs: "توثيق المشروع",
+      codeExample: "مثال على الكود",
+      fullCode: "الكود الكامل"
     },
     en: {
-      title: "Documentation Export",
-      description: "Download comprehensive user guide with detailed file structure map",
-      formats: "Available Formats",
-      exportTxt: "Export TXT",
-      exportHtml: "Export HTML", 
-      exporting: "Exporting...",
-      success: "Export successful",
-      error: "Export error",
-      features: "Guide Contents",
-      feature1: "Complete setup guide",
-      feature2: "All features explained",
-      feature3: "Common issues solutions",
-      feature4: "Best practices",
-      feature5: "Technical requirements",
-      feature6: "Security and privacy",
-      note: "Note",
-      noteText: "The guide contains comprehensive information for effectively using all project features",
-      searchPlaceholder: "Search files...",
-      fileDetails: "File Details",
-      dependencies: "Dependencies",
-      connectedTo: "Connected To",
+      title: "Interactive Project Documentation", 
+      description: "Explore project structure and code in detail",
+      search: "Search files...",
+      viewCode: "View Code",
+      hideCode: "Hide Code", 
+      copyCode: "Copy Code",
+      explanation: "Explanation",
       functionality: "Functionality",
+      dependencies: "Dependencies",
       techStack: "Tech Stack",
       importance: "Importance",
-      size: "Size"
-    },
+      size: "Size",
+      exportHtml: "Export HTML",
+      exportJson: "Export JSON",
+      fileStructure: "Interactive File Structure",
+      projectDocs: "Project Documentation",
+      codeExample: "Code Example",
+      fullCode: "Full Code"
+    }
   }
 
   const text = t[language]
@@ -383,7 +794,8 @@ export function DocumentationExport({ darkMode, language }: DocumentationExportP
       const matchesSearch = 
         node.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         node.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        node.purpose?.toLowerCase().includes(searchTerm.toLowerCase())
+        node.purpose?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        node.explanation?.toLowerCase().includes(searchTerm.toLowerCase())
 
       if (matchesSearch) {
         filtered[key] = node
@@ -400,11 +812,12 @@ export function DocumentationExport({ darkMode, language }: DocumentationExportP
 
   const filteredStructure = filterNodes(projectStructure, searchTerm)
 
-  // مكون لعرض عقد شجرة الملفات المحسنة
+  // مكون عرض عقدة الملف
   const FileTreeNode = ({ node, path }: { node: FileNode; path: string }) => {
     const isExpanded = expandedNodes.has(path)
     const Icon = node.icon || (node.type === "folder" ? Folder : File)
     const isSelected = selectedFile === path
+    const hasCode = !!(node.codeExample || node.fullCode)
 
     const toggleExpanded = () => {
       const newExpanded = new Set(expandedNodes)
@@ -420,6 +833,15 @@ export function DocumentationExport({ darkMode, language }: DocumentationExportP
       setSelectedFile(isSelected ? null : path)
     }
 
+    const toggleCode = () => {
+      setShowCode(showCode === path ? null : path)
+    }
+
+    const copyToClipboard = (code: string) => {
+      navigator.clipboard.writeText(code)
+      alert('تم نسخ الكود!')
+    }
+
     const getImportanceBadge = (importance?: string) => {
       const colors = {
         critical: "bg-red-100 text-red-800 border-red-200",
@@ -433,7 +855,7 @@ export function DocumentationExport({ darkMode, language }: DocumentationExportP
     return (
       <div className="ml-4">
         <div 
-          className={`flex items-start gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg cursor-pointer group transition-all ${
+          className={`flex items-start gap-3 p-4 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg cursor-pointer group transition-all ${
             isSelected ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200" : ""
           }`}
           onClick={selectFile}
@@ -442,8 +864,7 @@ export function DocumentationExport({ darkMode, language }: DocumentationExportP
             <button 
               onClick={(e) => { e.stopPropagation(); toggleExpanded() }} 
               className="flex items-center pt-1"
-            >
-              {isExpanded ? (
+            >              {isExpanded ? (
                 <ChevronDown className="w-4 h-4 text-gray-500" />
               ) : (
                 <ChevronRight className="w-4 h-4 text-gray-500" />
@@ -451,86 +872,166 @@ export function DocumentationExport({ darkMode, language }: DocumentationExportP
             </button>
           )}
 
-          <Icon className={`w-5 h-5 ${node.color || "text-gray-500"} mt-0.5 flex-shrink-0`} />
-
-          {node.thumbnail && (
-            <div className="relative group/thumb">
-              <img 
-                src={node.thumbnail} 
-                alt={node.name} 
-                className="w-10 h-10 rounded-lg border border-gray-200 object-cover flex-shrink-0"
-              />
-              <div className="absolute -top-1 -right-1 opacity-0 group-hover/thumb:opacity-100 transition-opacity">
-                <Camera className="w-3 h-3 text-blue-500" />
-              </div>
-            </div>
-          )}
+          <Icon className={`w-6 h-6 ${node.color || "text-gray-500"} mt-0.5 flex-shrink-0`} />
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="font-semibold text-sm truncate">{node.name}</span>
-              <Badge variant="outline" className="text-xs flex-shrink-0">
-                {node.type === "folder" ? "مجلد" : "ملف"}
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className="font-semibold text-lg">{node.name}</span>
+              <Badge variant="outline" className="text-xs">
+                {node.type === "folder" ? "📁 مجلد" : "📄 ملف"}
               </Badge>
               {node.importance && (
-                <Badge className={`text-xs flex-shrink-0 ${getImportanceBadge(node.importance)}`}>
+                <Badge className={`text-xs ${getImportanceBadge(node.importance)}`}>
                   {node.importance}
                 </Badge>
               )}
               {node.size && (
-                <Badge variant="outline" className="text-xs flex-shrink-0 bg-gray-100">
+                <Badge variant="outline" className="text-xs bg-gray-100">
                   {node.size}
+                </Badge>
+              )}
+              {hasCode && (
+                <Badge variant="outline" className="text-xs bg-green-100 text-green-800">
+                  <Code className="w-3 h-3 mr-1" />
+                  كود متاح
                 </Badge>
               )}
             </div>
 
             {node.description && (
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-2 leading-relaxed">
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 leading-relaxed font-medium">
                 {node.description}
               </p>
             )}
 
             {node.purpose && (
-              <p className="text-sm text-blue-600 dark:text-blue-400 mb-2 leading-relaxed">
-                <strong>الغرض:</strong> {node.purpose}
-              </p>
+              <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <h5 className="font-medium text-sm text-blue-800 dark:text-blue-200 mb-1">الغرض:</h5>
+                <p className="text-sm text-blue-700 dark:text-blue-300">{node.purpose}</p>
+              </div>
+            )}
+
+            {node.explanation && (
+              <div className="mb-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <h5 className="font-medium text-sm text-green-800 dark:text-green-200 mb-1">{text.explanation}:</h5>
+                <p className="text-sm text-green-700 dark:text-green-300">{node.explanation}</p>
+              </div>
             )}
 
             {node.functionality && node.functionality.length > 0 && (
-              <div className="mb-2">
-                <p className="text-xs font-medium text-gray-500 mb-1">الوظائف الرئيسية:</p>
-                <div className="flex flex-wrap gap-1">
-                  {node.functionality.slice(0, 3).map((func, idx) => (
-                    <Badge key={idx} variant="secondary" className="text-xs">
-                      {func}
-                    </Badge>
+              <div className="mb-3">
+                <h5 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-2">{text.functionality}:</h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                  {node.functionality.map((func, idx) => (
+                    <div key={idx} className="flex items-start gap-2 text-sm">
+                      <CheckCircle className="w-3 h-3 text-green-500 mt-1 flex-shrink-0" />
+                      <span className="text-gray-600 dark:text-gray-400">{func}</span>
+                    </div>
                   ))}
-                  {node.functionality.length > 3 && (
-                    <Badge variant="secondary" className="text-xs">
-                      +{node.functionality.length - 3} أخرى
-                    </Badge>
-                  )}
                 </div>
               </div>
             )}
 
-            {node.techStack && node.techStack.length > 0 && (
-              <div className="mb-2">
-                <p className="text-xs font-medium text-gray-500 mb-1">التقنيات:</p>
-                <div className="flex flex-wrap gap-1">
-                  {node.techStack.map((tech, idx) => (
-                    <Badge key={idx} variant="outline" className="text-xs">
-                      {tech}
-                    </Badge>
-                  ))}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
+              {node.dependencies && node.dependencies.length > 0 && (
+                <div>
+                  <h5 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-2">{text.dependencies}:</h5>
+                  <div className="space-y-1">
+                    {node.dependencies.map((dep, idx) => (
+                      <Badge key={idx} variant="outline" className="text-xs mr-1 mb-1">
+                        <GitBranch className="w-3 h-3 mr-1" />
+                        {dep}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
+              )}
+
+              {node.techStack && node.techStack.length > 0 && (
+                <div>
+                  <h5 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-2">{text.techStack}:</h5>
+                  <div className="space-y-1">
+                    {node.techStack.map((tech, idx) => (
+                      <Badge key={idx} className="text-xs bg-blue-100 text-blue-800 mr-1 mb-1">
+                        <Package className="w-3 h-3 mr-1" />
+                        {tech}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {hasCode && (
+              <div className="mt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => { e.stopPropagation(); toggleCode() }}
+                    className="text-xs"
+                  >
+                    {showCode === path ? (
+                      <>
+                        <Eye className="w-3 h-3 mr-1" />
+                        {text.hideCode}
+                      </>
+                    ) : (
+                      <>
+                        <Code className="w-3 h-3 mr-1" />
+                        {text.viewCode}
+                      </>
+                    )}
+                  </Button>
+
+                  {(node.codeExample || node.fullCode) && showCode === path && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => { 
+                        e.stopPropagation()
+                        copyToClipboard(node.fullCode || node.codeExample || '')
+                      }}
+                      className="text-xs"
+                    >
+                      <Copy className="w-3 h-3 mr-1" />
+                      {text.copyCode}
+                    </Button>
+                  )}
+                </div>
+
+                {showCode === path && (
+                  <div className="space-y-4">
+                    {node.codeExample && (
+                      <div>
+                        <h5 className="font-medium text-sm mb-2 text-gray-700 dark:text-gray-300">
+                          {text.codeExample}:
+                        </h5>
+                        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
+                          <code>{node.codeExample}</code>
+                        </pre>
+                      </div>
+                    )}
+
+                    {node.fullCode && (
+                      <div>
+                        <h5 className="font-medium text-sm mb-2 text-gray-700 dark:text-gray-300">
+                          {text.fullCode}:
+                        </h5>
+                        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm max-h-96">
+                          <code>{node.fullCode}</code>
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
 
         {node.type === "folder" && node.children && isExpanded && (
-          <div className="mt-2 ml-4 border-l border-gray-200 dark:border-gray-600 pl-4">
+          <div className="mt-2 ml-6 border-l-2 border-gray-200 dark:border-gray-600 pl-4">
             {Object.entries(node.children).map(([key, childNode]) => (
               <FileTreeNode 
                 key={key} 
@@ -544,450 +1045,246 @@ export function DocumentationExport({ darkMode, language }: DocumentationExportP
     )
   }
 
-  // مكون تفاصيل الملف المحدد
-  const FileDetailsPanel = () => {
-    if (!selectedFile) return null
+  // تصدير HTML
+  const exportAsHtml = () => {
+    const currentDate = new Date().toLocaleDateString('ar-EG')
 
-    const pathParts = selectedFile.split("/")
-    let current: any = projectStructure
-    for (const part of pathParts) {
-      current = current[part]?.children ? current[part] : current[part]
+    const generateNodeHtml = (nodes: { [key: string]: FileNode }, level = 0): string => {
+      return Object.entries(nodes).map(([key, node]) => {
+        const Icon = node.icon?.name || 'File'
+
+        return `
+        <div style="margin-left: ${level * 20}px; margin-bottom: 20px; padding: 15px; border: 1px solid #e5e7eb; border-radius: 8px; background: white;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <span style="font-size: 20px;">${node.type === 'folder' ? '📁' : '📄'}</span>
+            <h${Math.min(level + 2, 6)} style="margin: 0; color: #1f2937;">${node.name}</h${Math.min(level + 2, 6)}>
+            <span style="background: #f3f4f6; padding: 2px 8px; border-radius: 4px; font-size: 12px;">
+              ${node.type === 'folder' ? 'مجلد' : 'ملف'}
+            </span>
+            ${node.importance ? `<span style="background: #fee2e2; color: #dc2626; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${node.importance}</span>` : ''}
+          </div>
+
+          ${node.description ? `<p style="color: #374151; margin-bottom: 10px; font-weight: 500;">${node.description}</p>` : ''}
+
+          ${node.purpose ? `
+          <div style="background: #eff6ff; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+            <strong style="color: #1e40af;">الغرض:</strong>
+            <p style="margin: 5px 0 0 0; color: #1e40af;">${node.purpose}</p>
+          </div>` : ''}
+
+          ${node.explanation ? `
+          <div style="background: #f0fdf4; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+            <strong style="color: #166534;">الشرح:</strong>
+            <p style="margin: 5px 0 0 0; color: #166534;">${node.explanation}</p>
+          </div>` : ''}
+
+          ${node.functionality && node.functionality.length > 0 ? `
+          <div style="margin-bottom: 10px;">
+            <strong style="color: #374151;">الوظائف:</strong>
+            <ul style="margin: 5px 0; padding-right: 20px;">
+              ${node.functionality.map(func => `<li style="color: #6b7280; margin-bottom: 3px;">${func}</li>`).join('')}
+            </ul>
+          </div>` : ''}
+
+          ${node.codeExample ? `
+          <div style="margin-top: 15px;">
+            <strong style="color: #374151;">مثال على الكود:</strong>
+            <pre style="background: #1f2937; color: #f9fafb; padding: 15px; border-radius: 6px; overflow-x: auto; margin-top: 8px; font-size: 13px;"><code>${node.codeExample.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>
+          </div>` : ''}
+
+          ${node.fullCode ? `
+          <div style="margin-top: 15px;">
+            <strong style="color: #374151;">الكود الكامل:</strong>
+            <pre style="background: #1f2937; color: #f9fafb; padding: 15px; border-radius: 6px; overflow-x: auto; margin-top: 8px; font-size: 13px; max-height: 400px; overflow-y: auto;"><code>${node.fullCode.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>
+          </div>` : ''}
+
+          ${node.children ? generateNodeHtml(node.children, level + 1) : ''}
+        </div>
+        `
+      }).join('')
     }
 
-    if (!current) return null
+    const htmlContent = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>توثيق مراقب فيسبوك المتقدم - التفاعلي</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .content { padding: 40px; }
+        .toc {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        pre { direction: ltr; text-align: left; }
+        @media (max-width: 768px) {
+            .container { margin: 10px; }
+            .header { padding: 20px; }
+            .content { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 توثيق مراقب فيسبوك المتقدم</h1>
+            <p>التوثيق التفاعلي الشامل مع الأكواد والشروحات</p>
+            <p style="margin-top: 15px; opacity: 0.9;">تم الإنشاء في: ${currentDate}</p>
+        </div>
 
-    return (
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Info className="w-5 h-5" />
-            {text.fileDetails}: {current.name}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {current.purpose && (
-            <div>
-              <h4 className="font-medium text-sm mb-2">الغرض والهدف</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-300">{current.purpose}</p>
+        <div class="content">
+            <div class="toc">
+                <h2>📋 فهرس المحتويات</h2>
+                <p>هذا التوثيق يحتوي على:</p>
+                <ul style="margin: 10px 0; padding-right: 20px;">
+                    <li>هيكل المشروع التفصيلي مع الأكواد</li>
+                    <li>شرح كل ملف ووظيفته</li>
+                    <li>أمثلة على الأكواد والاستخدام</li>
+                    <li>التبعيات والتقنيات المستخدمة</li>
+                    <li>نصائح التطوير والصيانة</li>
+                </ul>
             </div>
-          )}
 
-          {current.functionality && (
             <div>
-              <h4 className="font-medium text-sm mb-2">{text.functionality}</h4>
-              <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-                {current.functionality.map((func: string, idx: number) => (
-                  <li key={idx} className="flex items-start gap-2">
-                    <CheckCircle className="w-3 h-3 text-green-500 mt-1 flex-shrink-0" />
-                    {func}
-                  </li>
-                ))}
-              </ul>
+                <h2 style="color: #1f2937; margin-bottom: 20px;">🗂️ هيكل المشروع التفاعلي</h2>
+                ${generateNodeHtml(filteredStructure)}
             </div>
-          )}
 
-          {current.dependencies && (
-            <div>
-              <h4 className="font-medium text-sm mb-2">{text.dependencies}</h4>
-              <div className="flex flex-wrap gap-2">
-                {current.dependencies.map((dep: string, idx: number) => (
-                  <Badge key={idx} variant="outline" className="text-xs">
-                    <GitBranch className="w-3 h-3 mr-1" />
-                    {dep}
-                  </Badge>
-                ))}
-              </div>
+            <div style="margin-top: 40px; padding: 20px; background: #f3f4f6; border-radius: 10px; text-align: center;">
+                <h3 style="color: #374151;">📧 مراقب فيسبوك المتقدم</h3>
+                <p style="color: #6b7280; margin-top: 10px;">
+                    نظام شامل لمراقبة وتحليل بيانات Facebook مع واجهة متجاوبة وميزات متقدمة
+                </p>
+                <p style="margin-top: 15px; font-size: 14px; color: #9ca3af;">
+                    تم إنشاؤه في: ${currentDate} • النسخة: 2.0
+                </p>
             </div>
-          )}
+        </div>
+    </div>
+</body>
+</html>`
 
-          {current.connectedTo && (
-            <div>
-              <h4 className="font-medium text-sm mb-2">{text.connectedTo}</h4>
-              <div className="flex flex-wrap gap-2">
-                {current.connectedTo.map((conn: string, idx: number) => (
-                  <Badge key={idx} variant="secondary" className="text-xs">
-                    <Globe className="w-3 h-3 mr-1" />
-                    {conn}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {current.techStack && (
-            <div>
-              <h4 className="font-medium text-sm mb-2">{text.techStack}</h4>
-              <div className="flex flex-wrap gap-2">
-                {current.techStack.map((tech: string, idx: number) => (
-                  <Badge key={idx} className="text-xs bg-blue-100 text-blue-800">
-                    <Package className="w-3 h-3 mr-1" />
-                    {tech}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    )
-  }
-
-  const documentationContent = `
-# مراقب فيسبوك المتقدم - دليل المستخدم الشامل
-
-## نظرة عامة على المشروع
-
-مراقب فيسبوك المتقدم هو نظام متكامل ومتطور لمراقبة وتحليل المنشورات والتعليقات على فيسبوك، مع إمكانيات البحث عن أرقام الهواتف والتحليل المتقدم للبيانات.
-
-## الميزات الرئيسية
-
-- مراقبة المنشورات والتعليقات في الوقت الفعلي
-- تحليلات متقدمة للبيانات
-- البحث في قواعد بيانات أرقام الهواتف
-- تصدير التقارير بصيغ متعددة
-- واجهة مستخدم حديثة ومتجاوبة
-
-## التقنيات المستخدمة
-
-- Next.js 15
-- React 18
-- TypeScript
-- Tailwind CSS
-- Firebase
-- Facebook Graph API
-
-## الهيكل التنظيمي
-
-يتكون المشروع من عدة مجلدات رئيسية:
-- app/ - صفحات التطبيق ومسارات API
-- components/ - مكونات واجهة المستخدم
-- lib/ - الخدمات والمكتبات المساعدة
-- docs/ - التوثيق والدلائل
-
-تم إنشاء هذا الدليل تلقائياً من مراقب فيسبوك المتقدم.
-`
-
-  const exportAsText = () => {
-    const blob = new Blob([documentationContent], { type: "text/plain;charset=utf-8" })
+    const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.download = "facebook-monitor-guide.txt"
+    link.download = `facebook-monitor-interactive-docs-${new Date().toISOString().split('T')[0]}.html`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
   }
 
-  const generateEnhancedFileTreeHtml = (structure: { [key: string]: FileNode }) => {
-    const generateNodeHtml = (node: FileNode, depth = 0): string => {
-      const indent = "  ".repeat(depth)
-      const importanceColors = {
-        critical: "#ef4444",
-        high: "#f97316", 
-        medium: "#eab308",
-        low: "#22c55e"
+  // تصدير JSON
+  const exportAsJson = () => {
+    const data = {
+      projectStructure: filteredStructure,
+      documentation: {
+        projectDocs: projectDocumentation,
+        siteMap: siteMapContent
+      },
+      metadata: {
+        exportDate: new Date().toISOString(),
+        version: "2.0",
+        totalFiles: Object.keys(filteredStructure).length
       }
-      const borderColor = importanceColors[node.importance as keyof typeof importanceColors] || "#6b7280"
-
-      const thumbnailHtml = node.thumbnail 
-        ? `<img src="${node.thumbnail}" alt="${node.name}" style="width: 32px; height: 32px; border-radius: 8px; margin-left: 12px; border: 1px solid #e5e7eb;">` 
-        : ""
-
-      let html = `${indent}<div style="margin: 12px 0; padding: 16px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px; border-left: 4px solid ${borderColor}; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-          ${thumbnailHtml}
-          <div style="flex: 1;">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-              <strong style="color: #1f2937; font-size: 16px;">${node.name}</strong>
-              <span style="background: #e5e7eb; padding: 4px 8px; border-radius: 16px; font-size: 11px; font-weight: 600;">${node.type === "folder" ? "مجلد" : "ملف"}</span>
-              ${node.importance ? `<span style="background: ${borderColor}; color: white; padding: 4px 8px; border-radius: 16px; font-size: 11px; font-weight: 600;">${node.importance}</span>` : ""}
-              ${node.size ? `<span style="background: #f3f4f6; color: #374151; padding: 4px 8px; border-radius: 16px; font-size: 11px;">${node.size}</span>` : ""}
-            </div>
-            ${node.description ? `<div style="color: #6b7280; font-size: 14px; margin-bottom: 8px; line-height: 1.5;">${node.description}</div>` : ""}
-            ${node.purpose ? `<div style="color: #2563eb; font-size: 13px; margin-bottom: 8px; line-height: 1.5;"><strong>الغرض:</strong> ${node.purpose}</div>` : ""}
-          </div>
-        </div>`
-
-      if (node.functionality && node.functionality.length > 0) {
-        html += `<div style="margin: 8px 0;">
-          <div style="font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 4px;">الوظائف الرئيسية:</div>
-          <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-            ${node.functionality.slice(0, 4).map(func => 
-              `<span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 12px; font-size: 11px;">${func}</span>`
-            ).join('')}
-            ${node.functionality.length > 4 ? `<span style="background: #f3f4f6; color: #6b7280; padding: 2px 8px; border-radius: 12px; font-size: 11px;">+${node.functionality.length - 4} أخرى</span>` : ""}
-          </div>
-        </div>`
-      }
-
-      if (node.techStack && node.techStack.length > 0) {
-        html += `<div style="margin: 8px 0;">
-          <div style="font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 4px;">التقنيات:</div>
-          <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-            ${node.techStack.map(tech => 
-              `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; font-size: 11px; border: 1px solid #fcd34d;">${tech}</span>`
-            ).join('')}
-          </div>
-        </div>`
-      }
-
-      if (node.dependencies && node.dependencies.length > 0) {
-        html += `<div style="margin: 8px 0;">
-          <div style="font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 4px;">التبعيات:</div>
-          <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-            ${node.dependencies.slice(0, 3).map(dep => 
-              `<span style="background: #ecfdf5; color: #065f46; padding: 2px 8px; border-radius: 12px; font-size: 11px; border: 1px solid #10b981;">${dep}</span>`
-            ).join('')}
-            ${node.dependencies.length > 3 ? `<span style="background: #f3f4f6; color: #6b7280; padding: 2px 8px; border-radius: 12px; font-size: 11px;">+${node.dependencies.length - 3} أخرى</span>` : ""}
-          </div>
-        </div>`
-      }
-
-      html += `</div>\n`
-
-      if (node.children) {
-        Object.values(node.children).forEach(child => {
-          html += generateNodeHtml(child, depth + 1)
-        })
-      }
-
-      return html
     }
 
-    return Object.values(structure).map(node => generateNodeHtml(node)).join("")
-  }
-
-  const exportAsHtml = () => {
-    setExporting(true)
-
-    try {
-      const fileTreeHtml = generateEnhancedFileTreeHtml(projectStructure)
-      const currentDate = new Date().toLocaleDateString('ar-EG')
-
-      const htmlContent = `<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مراقب فيسبوك المتقدم - دليل المستخدم الشامل مع خريطة الملفات التفصيلية</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
-    <style>
-        body {
-            font-family: 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', sans-serif;
-            line-height: 1.7;
-            margin: 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 15px;
-            color: white;
-        }
-        h1 { color: white; font-size: 2.5em; margin-bottom: 10px; }
-        h2 { color: #1e40af; margin-top: 40px; padding: 15px 20px; background: #dbeafe; border-radius: 10px; }
-        .file-tree { background: #f8fafc; padding: 25px; border-radius: 15px; border: 2px solid #e2e8f0; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0; }
-        .stat-card { background: #f1f5f9; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #cbd5e1; }
-        .stat-number { font-size: 2em; font-weight: bold; color: #1e40af; }
-        .stat-label { color: #64748b; font-size: 0.9em; margin-top: 5px; }
-        @media (max-width: 768px) { .container { padding: 20px; } h1 { font-size: 2em; } }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🔍 مراقب فيسبوك المتقدم</h1>
-            <p style="font-size: 1.2em; margin: 0;">دليل المستخدم الشامل مع خريطة الملفات التفصيلية</p>
-        </div>
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-number">50+</div>
-                <div class="stat-label">ملف ومكون</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">15+</div>
-                <div class="stat-label">خدمة متخصصة</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">${currentDate}</div>
-                <div class="stat-label">تاريخ الإنشاء</div>
-            </div>
-        </div>
-        <h2>🗂️ خريطة هيكل المشروع</h2>
-        <div class="file-tree">
-            ${fileTreeHtml}
-        </div>
-        <div style="text-align: center; margin-top: 30px; padding: 20px; background: #f1f5f9; border-radius: 10px;">
-            <p style="color: #64748b; font-style: italic;">تم إنشاء هذا التوثيق تلقائياً من مراقب فيسبوك المتقدم</p>
-        </div>
-    </div>
-</body>
-</html>`
-
-      const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = "facebook-monitor-complete-guide-enhanced.html"
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-
-      setExportStatus({ type: "success", message: text.success })
-    } catch (error) {
-      console.error('HTML export error:', error)
-      setExportStatus({ type: "error", message: text.error })
-    } finally {
-      setExporting(false)
-      setTimeout(() => setExportStatus(null), 3000)
-    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `facebook-monitor-complete-docs-${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   return (
-    <Card className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm`}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <BookOpen className="w-5 h-5" />
-          {text.title}
-        </CardTitle>
-        <p className="text-sm text-gray-500">{text.description}</p>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* البحث في الملفات */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder={text.searchPlaceholder}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="text-center py-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl text-white">
+        <h1 className="text-3xl font-bold mb-2">{text.title}</h1>
+        <p className="text-blue-100">{text.description}</p>
+      </div>
 
-        {/* شجرة الملفات المحسنة */}
-        <div>
-          <h4 className="font-medium mb-3 flex items-center gap-2">
-            <TreePine className="w-4 h-4" />
-            خريطة هيكل المشروع التفصيلية
-            <Badge variant="secondary" className="text-xs">
+      {/* البحث */}
+      <div className="relative max-w-md mx-auto">
+        <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <input
+          type="text"
+          placeholder={text.search}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pr-12 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+        />
+      </div>
+
+      {/* هيكل المشروع التفاعلي */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <TreePine className="w-6 h-6" />
+            {text.fileStructure}
+            <Badge variant="secondary" className="text-sm">
               {Object.keys(filteredStructure).length} عنصر
             </Badge>
-          </h4>
-          <Card className="p-4 max-h-96 overflow-y-auto">
-            <div className="space-y-2">
-              {Object.entries(filteredStructure).map(([key, node]) => (
-                <FileTreeNode key={key} node={node} path={key} />
-              ))}
-              {Object.keys(filteredStructure).length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p>لم يتم العثور على ملفات مطابقة</p>
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
-
-        {/* تفاصيل الملف المحدد */}
-        <FileDetailsPanel />
-
-        {/* Features List */}
-        <div>
-          <h4 className="font-medium mb-3 flex items-center gap-2">
-            <Info className="w-4 h-4" />
-            {text.features}
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <Badge variant="outline" className="justify-start p-2">
-              <CheckCircle className="w-3 h-3 mr-2 text-green-500" />
-              {text.feature1}
-            </Badge>
-            <Badge variant="outline" className="justify-start p-2">
-              <CheckCircle className="w-3 h-3 mr-2 text-green-500" />
-              {text.feature2}
-            </Badge>
-            <Badge variant="outline" className="justify-start p-2">
-              <CheckCircle className="w-3 h-3 mr-2 text-green-500" />
-              {text.feature3}
-            </Badge>
-            <Badge variant="outline" className="justify-start p-2">
-              <CheckCircle className="w-3 h-3 mr-2 text-green-500" />
-              {text.feature4}
-            </Badge>
-            <Badge variant="outline" className="justify-start p-2">
-              <CheckCircle className="w-3 h-3 mr-2 text-green-500" />
-              {text.feature5}
-            </Badge>
-            <Badge variant="outline" className="justify-start p-2">
-              <CheckCircle className="w-3 h-3 mr-2 text-green-500" />
-              {text.feature6}
-            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {Object.entries(filteredStructure).map(([key, node]) => (
+              <FileTreeNode key={key} node={node} path={key} />
+            ))}
+            {Object.keys(filteredStructure).length === 0 && (
+              <div className="text-center py-12 text-gray-500">
+                <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg">لم يتم العثور على ملفات مطابقة للبحث</p>
+              </div>
+            )}
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Export Buttons */}
-        <div>
-          <h4 className="font-medium mb-3 flex items-center gap-2">
-            <FileType className="w-4 h-4" />
-            {text.formats}
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Button
-              onClick={exportAsHtml}
-              disabled={exporting}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {exporting ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Download className="w-4 h-4" />
-              )}
-              {exporting ? text.exporting : text.exportHtml}
-            </Button>
-
-            <Button onClick={exportAsText} variant="outline" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              {text.exportTxt}
-            </Button>
-          </div>
-        </div>
-
-        {/* Status Messages */}
-        {exportStatus && (
-          <Alert
-            className={exportStatus.type === "success" ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}
-          >
-            <CheckCircle className="w-4 h-4" />
-            <AlertDescription className={exportStatus.type === "success" ? "text-green-700" : "text-red-700"}>
-              {exportStatus.message}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Note */}
-        <Alert>
-          <Info className="w-4 h-4" />
-          <AlertDescription>
-            <strong>{text.note}:</strong> {text.noteText}
-          </AlertDescription>
-        </Alert>
-      </CardContent>
-    </Card>
+      {/* نصائح الاستخدام */}
+      <Alert>
+        <Info className="w-4 h-4" />
+        <AlertDescription>
+          <strong>نصائح الاستخدام:</strong>
+          <ul className="mt-2 space-y-1">
+            <li>• انقر على أي ملف لرؤية تفاصيله الكاملة</li>
+            <li>• استخدم "عرض الكود" لرؤية الأكواد الفعلية</li>
+            <li>• يمكنك نسخ أي كود بنقرة واحدة</li>
+            <li>• استخدم البحث للعثور على ملفات محددة</li>
+          </ul>
+        </AlertDescription>
+      </Alert>
+    </div>
   )
 }

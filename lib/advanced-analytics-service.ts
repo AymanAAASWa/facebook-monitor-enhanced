@@ -1,4 +1,4 @@
-import type { FacebookPost } from "./facebook-service"
+import type { FacebookPost } from "./facebook-api-service"
 
 export interface AdvancedAnalytics {
   // إحصائيات أساسية

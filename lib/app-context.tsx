@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, type ReactNode, useCallback, useEffect } from "react"
 import type { User } from "firebase/auth"
-import type { FacebookPost } from "./facebook-service"
+import type { FacebookPost } from "./facebook-api-service"
 import { processFacebookData, type AppData } from "./data-processor"
 import { firebaseService, type UserSettings } from "./firebase-service"
 
@@ -129,7 +129,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
               sourceId: source.id,
               sourceType: source.type,
               accessToken: userSettings.accessToken,
-              limit: Math.min(userSettings.monitoring?.maxPosts || 15, 25), // Increased limit for single source
+              limit: Math.min(userSettings.monitoring?.maxPosts || 25, 100), // Support larger batches
+              batchMode: true, // Enable batch loading
             }),
           })
 

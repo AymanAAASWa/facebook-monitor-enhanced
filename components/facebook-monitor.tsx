@@ -46,6 +46,8 @@ import { advancedAnalyticsService } from "@/lib/advanced-analytics-service"
 import { facebookUserAnalyticsService } from "@/lib/facebook-user-analytics-service"
 import { facebookCommentsService } from "@/lib/facebook-comments-service"
 import type { AutoReplyRule } from "@/lib/facebook-comments-service"
+import { UserAnalyticsViewer } from "./user-analytics-viewer"
+import { DemographicsMapViewer } from "./demographics-map-viewer"
 
 export function FacebookMonitor() {
   const { data, loading, error, user, userSettings, fetchData, setUser, loadUserSettings } = useAppContext()
@@ -623,6 +625,7 @@ export function FacebookMonitor() {
           <TabsContent value="users">
             <UserTable
               users={Array.from(data.users?.values() || [])}
+              posts={data.posts || []}
               phoneSearchResults={{}}
               onPhoneSearch={() => {}}
               searchingPhones={new Set()}

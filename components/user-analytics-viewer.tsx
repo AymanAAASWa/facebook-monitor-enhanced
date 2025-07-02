@@ -37,12 +37,16 @@ interface UserStats {
   totalPosts: number
   totalComments: number
   totalLikes: number
+  totalShares: number
+  totalCommentsOnPosts: number
+  activityScore: number
+  influenceScore: number
   avgPostLength: number
   mostActiveDay: string
   mostActiveHour: string
   engagementRate: number
   sources: string[]
-  activityTimeline: Array<{ date: string; posts: number; comments: number }>
+  activityTimeline: Array<{ date: string; posts: number; comments: number; likes: number; shares: number }>
 }
 
 export function UserAnalyticsViewer({
@@ -125,20 +129,49 @@ export function UserAnalyticsViewer({
 
   const text = t[language]
 
-  // حساب إحصائيات المستخدم
+  // حساب إحصائيات المستخدم المحسنة
   const userStats = useMemo((): UserStats => {
-    const userPosts = posts.filter(post => post.from?.id === userId)
-    const userComments = posts.flatMap(post => 
-      post.comments?.data?.filter(comment => comment.from?.id === userId) || []
-    )
+    console.log(`Calculating stats for user ${userId}`)
+    console.log(`Total posts available: ${posts.length}`)
 
+    const userPosts = posts.filter(post => {
+      const isUserPost = post.from?.id === userId
+      if (isUserPost) {
+        console.log(`Found user post: ${post.id}`)
+      }
+      return isUserPost
+    })
+
+    const userComments = posts.flatMap(post => {
+      const comments = post.comments?.data?.filter(comment => comment.from?.id === userId) || []
+      if (comments.length > 0) {
+        console.log(`Found ${comments.length} comments from user in post ${post.id}`)
+      }
+      return comments
+    })
+
+    console.log(`User posts: ${userPosts.length}, User comments: ${userComments.length}`)
+
+    // حساب جميع أنواع التفاعل
     const totalLikes = userPosts.reduce((sum, post) => 
       sum + (post.reactions?.summary?.total_count || 0), 0
+    )
+
+    const totalShares = userPosts.reduce((sum, post) => 
+      sum + (post.shares?.count || 0), 0
+    )
+
+    const totalCommentsOnPosts = userPosts.reduce((sum, post) => 
+      sum + (post.comments?.summary?.total_count || 0), 0
     )
 
     const avgPostLength = userPosts.length > 0 
       ? Math.round(userPosts.reduce((sum, post) => sum + (post.message?.length || 0), 0) / userPosts.length)
       : 0
+
+    // حساب نقاط النشاط (شرح النظام)
+    const activityScore = (userPosts.length * 10) + (userComments.length * 5) + (totalLikes * 2) + (totalShares * 15)
+    const influenceScore = Math.round(((totalLikes + totalShares) / Math.max(userPosts.length, 1)) * 10) / 10
 
     // تحليل أيام النشاط
     const dayActivity = userPosts.reduce((acc, post) => {
@@ -168,27 +201,35 @@ export function UserAnalyticsViewer({
       hourActivity[parseInt(a[0])] > hourActivity[parseInt(b[0])] ? a : b, ['0', 0]
     )[0]
 
-    // معدل التفاعل
+    // معدل التفاعل المحسن
     const engagementRate = userPosts.length > 0 
-      ? Math.round((totalLikes + userComments.length) / userPosts.length * 100) / 100
+      ? Math.round((totalLikes + userComments.length + totalShares) / userPosts.length * 100) / 100
       : 0
 
     // المصادر النشطة
     const sources = Array.from(new Set(userPosts.map(post => post.source_name)))
 
-    // الخط الزمني
+    // الخط الزمني المحسن
     const activityTimeline = userPosts.reduce((acc, post) => {
       if (post.created_time) {
         const date = new Date(post.created_time).toDateString()
         const existing = acc.find(item => item.date === date)
         if (existing) {
           existing.posts += 1
+          existing.likes += post.reactions?.summary?.total_count || 0
+          existing.shares += post.shares?.count || 0
         } else {
-          acc.push({ date, posts: 1, comments: 0 })
+          acc.push({ 
+            date, 
+            posts: 1, 
+            comments: 0, 
+            likes: post.reactions?.summary?.total_count || 0,
+            shares: post.shares?.count || 0
+          })
         }
       }
       return acc
-    }, [] as Array<{ date: string; posts: number; comments: number }>)
+    }, [] as Array<{ date: string; posts: number; comments: number; likes: number; shares: number }>)
 
     // إضافة التعليقات للخط الزمني
     userComments.forEach(comment => {
@@ -197,7 +238,7 @@ export function UserAnalyticsViewer({
       if (existing) {
         existing.comments += 1
       } else {
-        activityTimeline.push({ date, posts: 0, comments: 1 })
+        activityTimeline.push({ date, posts: 0, comments: 1, likes: 0, shares: 0 })
       }
     })
 
@@ -205,6 +246,10 @@ export function UserAnalyticsViewer({
       totalPosts: userPosts.length,
       totalComments: userComments.length,
       totalLikes,
+      totalShares,
+      totalCommentsOnPosts,
+      activityScore,
+      influenceScore,
       avgPostLength,
       mostActiveDay,
       mostActiveHour: `${mostActiveHour}:00`,
@@ -215,8 +260,28 @@ export function UserAnalyticsViewer({
   }, [userId, posts])
 
   const userInfo = useMemo(() => {
+    // البحث في المنشورات أولاً
     const userPost = posts.find(post => post.from?.id === userId)
-    return userPost?.from || null
+    if (userPost?.from) {
+      return userPost.from
+    }
+
+    // البحث في التعليقات إذا لم نجد في المنشورات
+    for (const post of posts) {
+      if (post.comments?.data) {
+        const commentUser = post.comments.data.find(comment => comment.from?.id === userId)
+        if (commentUser?.from) {
+          return commentUser.from
+        }
+      }
+    }
+
+    // إنشاء كائن افتراضي إذا لم نجد البيانات
+    return {
+      id: userId,
+      name: `User ${userId.substring(0, 8)}...`,
+      picture: { data: { url: "" } }
+    }
   }, [userId, posts])
 
   const copyToClipboard = (text: string) => {
@@ -229,7 +294,10 @@ export function UserAnalyticsViewer({
     return { label: text.low, color: "bg-red-100 text-red-800" }
   }
 
-  if (!userInfo) {
+  // التحقق من وجود أي نشاط للمستخدم
+  const hasAnyActivity = userStats.totalPosts > 0 || userStats.totalComments > 0
+
+  if (!hasAnyActivity) {
     return (
       <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"} w-full max-w-4xl mx-auto`}>
         <CardHeader>
@@ -243,7 +311,22 @@ export function UserAnalyticsViewer({
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-gray-500">{text.noData}</p>
+            <Users className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-xl font-semibold mb-2">لا توجد بيانات كافية</h3>
+            <p className="text-gray-500 mb-4">لم يتم العثور على أي نشاط لهذا المستخدم في البيانات المحملة</p>
+            <div className="space-y-2 text-sm text-gray-400">
+              <p>معرف المستخدم: {userId}</p>
+              <p>اسم المستخدم: {userInfo?.name || "غير محدد"}</p>
+              <p>إجمالي المنشورات المتاحة: {posts.length}</p>
+              <p>ملاحظة: قد يكون هذا المستخدم لديه نشاط لكن لم يتم تحميله في البيانات الحالية</p>
+            </div>
+            <Button 
+              onClick={onClose} 
+              className="mt-4"
+              variant="default"
+            >
+              العودة للقائمة الرئيسية
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -258,12 +341,18 @@ export function UserAnalyticsViewer({
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3 sm:gap-4">
               <Avatar className="w-12 h-12 sm:w-16 sm:h-16">
-                <AvatarImage src={userInfo.picture?.data?.url} alt={userInfo.name} />
-                <AvatarFallback>{userInfo.name?.charAt(0)}</AvatarFallback>
+                <AvatarImage src={userInfo?.picture?.data?.url} alt={userInfo?.name} />
+                <AvatarFallback>{userInfo?.name?.charAt(0) || "U"}</AvatarFallback>
               </Avatar>
               <div>
-                <CardTitle className="text-lg sm:text-xl">{userInfo.name}</CardTitle>
+                <CardTitle className="text-lg sm:text-xl">{userInfo?.name || `مستخدم ${userId.substring(0, 8)}...`}</CardTitle>
                 <CardDescription className="text-sm">معرف المستخدم: {userId}</CardDescription>
+                {userStats.isSpecialUser && (
+                  <Badge className="mt-1 bg-orange-100 text-orange-800 text-xs">
+                    <Star className="w-3 h-3 mr-1" />
+                    مستخدم مميز
+                  </Badge>
+                )}
               </div>
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -295,7 +384,7 @@ export function UserAnalyticsViewer({
       </Card>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}`}>
           <CardContent className="p-3 sm:p-4 text-center">
             <div className="text-xl sm:text-2xl font-bold text-blue-600 mb-1">
@@ -325,10 +414,28 @@ export function UserAnalyticsViewer({
 
         <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}`}>
           <CardContent className="p-3 sm:p-4 text-center">
-            <div className="text-xl sm:text-2xl font-bold text-purple-600 mb-1">
-              {userStats.engagementRate}
+            <div className="text-xl sm:text-2xl font-bold text-orange-600 mb-1">
+              {userStats.totalShares}
             </div>
-            <div className="text-xs sm:text-sm text-gray-500">{text.engagementRate}</div>
+            <div className="text-xs sm:text-sm text-gray-500">المشاركات</div>
+          </CardContent>
+        </Card>
+
+        <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}`}>
+          <CardContent className="p-3 sm:p-4 text-center">
+            <div className="text-xl sm:text-2xl font-bold text-purple-600 mb-1">
+              {userStats.activityScore}
+            </div>
+            <div className="text-xs sm:text-sm text-gray-500">نقاط النشاط</div>
+          </CardContent>
+        </Card>
+
+        <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}`}>
+          <CardContent className="p-3 sm:p-4 text-center">
+            <div className="text-xl sm:text-2xl font-bold text-indigo-600 mb-1">
+              {userStats.influenceScore}
+            </div>
+            <div className="text-xs sm:text-sm text-gray-500">نقاط التأثير</div>
           </CardContent>
         </Card>
       </div>
