@@ -1,78 +1,104 @@
 "use client"
-import { Avatar } from "@/components/ui/avatar"; // تأكد من وجود استيراد لاسم المكون
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+
+import { useState } from "react"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import {
+import { Separator } from "@/components/ui/separator"
+import { CommentsSection } from "@/components/comments-section"
+import { useAppContext } from "@/lib/app-context"
+import { 
+  Heart, 
+  MessageSquare, 
+  Share2, 
+  Clock, 
   User,
-  Phone,
-  ExternalLink,
-  Star,
-  Copy,
-  MessageCircle,
-  Eye,
-  EyeOff,
-  Loader2,
-  ImageIcon,
-  Video,
-  DownloadIcon,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink
 } from "lucide-react"
-import Image from "next/image"
-import { buildPostUrl, buildUserUrl, copyToClipboard, downloadMedia } from "@/lib/utils"
-import type { Post } from "@/types"
+
+interface Post {
+  id: string
+  message?: string
+  created_time: string
+  likes?: { data: any[] }
+  comments?: { data: any[] }
+  shares?: { count: number }
+  from?: { name: string; id: string }
+  source?: string
+  source_type?: string;
+  source_name?: string;
+  full_picture?: string;
+  attachments?: any;
+}
 
 interface PostCardProps {
   post: Post
-  searchingPhones: Set<string>
-  phoneSearchResults: { [key: string]: string }
-  expandedComments: Set<string>
-  onToggleComments: (postId: string) => void
-  onPhoneSearch: (userId: string, userName: string, source: string) => void
-  darkMode: boolean
-  language: "ar" | "en"
+  viewMode?: "grid" | "list"
+  compact?: boolean
 }
 
-export function PostCard({
-  post,
-  searchingPhones,
-  phoneSearchResults,
-  expandedComments,
-  onToggleComments,
-  onPhoneSearch,
-  darkMode,
-  language,
+export function PostCard({ 
+  post, 
+  viewMode = "list", 
+  compact = false
 }: PostCardProps) {
-  const t = {
-    ar: {
-      unknown: "غير معروف",
-      group: "جروب",
-      page: "صفحة",
-      comments: "التعليقات",
-      showComments: "عرض التعليقات",
-      hideComments: "إخفاء التعليقات",
-      noComments: "لا توجد تعليقات",
-      images: "صور",
-      videos: "فيديوهات",
-      downloadImage: "تحميل الصورة",
-      downloadVideo: "تحميل الفيديو",
-    },
-    en: {
-      unknown: "Unknown",
-      group: "Group",
-      page: "Page",
-      comments: "Comments",
-      showComments: "Show Comments",
-      hideComments: "Hide Comments",
-      noComments: "No comments",
-      images: "Images",
-      videos: "Videos",
-      downloadImage: "Download Image",
-      downloadVideo: "Download Video",
-    },
+  const [showComments, setShowComments] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [searchingPhones, setSearchingPhones] = useState<Set<string>>(new Set())
+  const [phoneSearchResults, setPhoneSearchResults] = useState<{ [key: string]: string }>({})
+  const { darkMode: isDarkMode } = useAppContext()
+
+  const handlePhoneSearch = (userId: string, userName: string, source: string) => {
+    setSearchingPhones(prev => new Set(prev).add(userId))
+    // محاكاة البحث عن رقم الهاتف
+    setTimeout(() => {
+      setPhoneSearchResults(prev => ({ ...prev, [userId]: "01xxxxxxxxx" }))
+      setSearchingPhones(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(userId)
+        return newSet
+      })
+    }, 2000)
   }
 
-  const text = t[language]
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+
+    if (diffInMinutes < 60) {
+      return `منذ ${diffInMinutes} دقيقة`
+    } else if (diffInMinutes < 1440) {
+      return `منذ ${Math.floor(diffInMinutes / 60)} ساعة`
+    } else {
+      return `منذ ${Math.floor(diffInMinutes / 1440)} يوم`
+    }
+  }
+
+  const truncateText = (text: string, maxLength: number) => {
+    if (text.length <= maxLength) return text
+    return text.substring(0, maxLength) + "..."
+  }
+
+  const engagement = {
+    likes: post.likes?.data?.length || 0,
+    comments: post.comments?.data?.length || 0,
+    shares: post.shares?.count || 0
+  }
+
+  const totalEngagement = engagement.likes + engagement.comments + engagement.shares
+  const engagementLevel = totalEngagement > 50 ? "high" : totalEngagement > 10 ? "medium" : "low"
+
+  const buildPostUrl = (post:Post) => {
+    return `https://www.facebook.com/${post.id}`
+  }
+  const buildUserUrl = (userId:string) => {
+    return `https://www.facebook.com/${userId}`
+  }
 
   const calculatePostScore = (post: Post): number => {
     let score = 0
@@ -134,254 +160,191 @@ export function PostCard({
 
     return media
   }
- 
- return (
-  <Card
-    className={`${
-      darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"
-    } backdrop-blur-sm hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500`}
-  >
-    <CardContent className="p-4">
 
-        {/* رأس البطاقة */}
-        <div className="flex items-start justify-between mb-3">
-          {/* معلومات المستخدم */}
-          <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-full overflow-hidden shadow-md">
-              {post.from?.picture?.data?.url ? (
-                <Image
-                  src={post.from.picture.data.url}
-                  alt={post.from?.name || "User"}
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                  {post.from?.name?.charAt(0) || "?"}
-                </div>
-              )}
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-bold text-base">{post.from?.name || text.unknown}</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => window.open(buildUserUrl(post.from?.id || ""), "_blank")}
-                  className="h-5 w-5 p-0 hover:bg-blue-100"
-                >
-                  <User className="w-3 h-3" />
-                </Button>
-                {post.from?.id && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      onPhoneSearch(post.from?.id || "", post.from?.name || "", post.source_name || "")
-                    }
-                    disabled={searchingPhones.has(post.from?.id || "")}
-                    className="h-5 w-5 p-0 hover:bg-green-100"
-                  >
-                    {searchingPhones.has(post.from?.id || "") ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Phone className="w-3 h-3" />
-                    )}
-                  </Button>
-                )}
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+  }
+
+  if (compact) {
+    return (
+      <Card className={`transition-all duration-200 hover:shadow-md ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'}`}>
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <Avatar className="w-10 h-10 flex-shrink-0">
+              <AvatarFallback>
+                <User className="w-5 h-5" />
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="font-medium text-sm truncate">{post.from?.name || "مستخدم غير معروف"}</span>
+                <Badge variant="outline" className="text-xs">{post.source}</Badge>
+                <span className="text-xs text-gray-500 flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {formatDate(post.created_time)}
+                </span>
               </div>
-
-              <p className="text-xs text-gray-500 mb-1">
-                {post.created_time
-                  ? new Date(post.created_time).toLocaleString(language === "ar" ? "ar-EG" : "en-US")
-                  : text.unknown}
+              <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-3">
+                {post.message || "منشور بدون نص"}
               </p>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200">
-                  {post.source_type === "group" ? text.group : text.page}: {post.source_name}
-                </Badge>
-
-                {post.from?.id && phoneSearchResults[post.from.id] && (
-                  <Badge
-                    variant="secondary"
-                    className={`text-xs flex items-center gap-1 ${
-                      phoneSearchResults[post.from.id] === "لا يوجد رقم" ||
-                      phoneSearchResults[post.from.id] === "خطأ في البحث"
-                        ? "bg-red-50 border-red-200 text-red-700"
-                        : phoneSearchResults[post.from.id] === "جاري البحث..."
-                        ? "bg-yellow-50 border-yellow-200 text-yellow-700"
-                        : "bg-green-50 border-green-200 text-green-700"
-                    }`}
-                  >
-                    <Phone className="w-3 h-3" />
-                    {phoneSearchResults[post.from.id]}
-                    {!["لا يوجد رقم", "خطأ في البحث", "جاري البحث..."].includes(phoneSearchResults[post.from.id]) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(phoneSearchResults[post.from.id])}
-                        className="h-4 w-4 p-0 hover:bg-green-200"
-                      >
-                        <Copy className="w-2 h-2" />
-                      </Button>
-                    )}
-                  </Badge>
-                )}
+              <div className="flex items-center gap-4">
+                <span className="flex items-center gap-1 text-xs text-gray-500">
+                  <Heart className="w-3 h-3 text-red-500" />
+                  {engagement.likes}
+                </span>
+                <span className="flex items-center gap-1 text-xs text-gray-500">
+                  <MessageSquare className="w-3 h-3 text-blue-500" />
+                  {engagement.comments}
+                </span>
+                <span className="flex items-center gap-1 text-xs text-gray-500">
+                  <Share2 className="w-3 h-3 text-green-500" />
+                  {engagement.shares}
+                </span>
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
-          {/* أدوات إضافية */}
-          <div className="flex items-center gap-1">
-            <Badge variant="outline" className="bg-yellow-50 border-yellow-200 text-xs">
-              <Star className="w-3 h-3 mr-1 text-yellow-500" />
-              {calculatePostScore(post)}
-            </Badge>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => window.open(buildPostUrl(post), "_blank")}
-              className="hover:bg-blue-100 h-6 w-6 p-0"
-            >
-              <ExternalLink className="w-3 h-3" />
-            </Button>
+  return (
+    <Card className={`transition-all duration-200 hover:shadow-lg ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} ${viewMode === "grid" ? "h-fit" : ""}`}>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <Avatar className="w-12 h-12">
+              <AvatarFallback>
+                <User className="w-6 h-6" />
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h3 className="font-semibold text-lg">{post.from?.name || "مستخدم غير معروف"}</h3>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge 
+                  variant={post.source_type === "page" ? "default" : "secondary"}
+                  className="text-xs"
+                >
+                  {post.source_type === "page" ? "صفحة" : "مجموعة"}
+                </Badge>
+                <span className="text-sm text-gray-500 flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  {formatDate(post.created_time)}
+                </span>
+              </div>
+            </div>
           </div>
+          <Badge 
+            variant={engagementLevel === "high" ? "default" : engagementLevel === "medium" ? "secondary" : "outline"}
+            className="text-xs"
+          >
+            {engagementLevel === "high" ? "تفاعل عالي" : engagementLevel === "medium" ? "تفاعل متوسط" : "تفاعل منخفض"}
+          </Badge>
         </div>
+      </CardHeader>
 
-        {/* التعليقات */}
-        {expandedComments.has(post.id) && (
-          <div className="mt-3">
-            {post.comments?.data?.length > 0 ? (
-              <div className="max-h-80 overflow-y-auto border rounded-md bg-gray-50/50 dark:bg-gray-800/50 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800">
-                <div className="space-y-3 p-4">
-                  {post.comments.data.map((comment, index) => (
-                    <div
-                      key={comment.id}
-                      className={`flex gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm border-l-2 border-l-blue-400 ${
-                        index < post.comments.data.length - 1 ? "mb-3" : ""
-                      }`}
-                    >
-                      {/* صورة المعلق */}
-                      <div className="relative w-8 h-8 rounded-full overflow-hidden shadow-md flex-shrink-0">
-                        {comment.from?.picture?.data?.url ? (
-                          <Image
-                            src={comment.from.picture.data.url}
-                            alt={comment.from?.name || "User"}
-                            fill
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-r from-green-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
-                            {comment.from?.name?.charAt(0) || "?"}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* محتوى التعليق */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
-                            {comment.from?.name || text.unknown}
-                          </span>
-
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => window.open(buildUserUrl(comment.from?.id || ""), "_blank")}
-                              className="h-6 w-6 p-0 hover:bg-blue-100"
-                            >
-                              <User className="w-3 h-3" />
-                            </Button>
-                            {comment.from?.id && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  onPhoneSearch(comment.from?.id || "", comment.from?.name || "", post.source_name || "")
-                                }
-                                disabled={searchingPhones.has(comment.from?.id || "")}
-                                className="h-6 w-6 p-0 hover:bg-green-100"
-                              >
-                                {searchingPhones.has(comment.from?.id || "") ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <Phone className="w-3 h-3" />
-                                )}
-                              </Button>
-                            )}
-                          </div>
-
-                          <span className="text-xs text-gray-500 ml-auto">
-                            {comment.created_time
-                              ? new Date(comment.created_time).toLocaleString(language === "ar" ? "ar-EG" : "en-US")
-                              : text.unknown}
-                          </span>
-                        </div>
-
-                        <div className="bg-gray-100 dark:bg-gray-600 p-3 rounded-lg">
-                          <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed break-words">
-                            {comment.message || "لا يوجد نص"}
-                          </p>
-                        </div>
-
-                        {/* إعجابات */}
-                        {comment.like_count > 0 && (
-                          <div className="mt-2">
-                            <Badge variant="outline" className="text-xs bg-red-50 border-red-200 text-red-700">
-                              ❤️ {comment.like_count}
-                            </Badge>
-                          </div>
-                        )}
-
-                        {/* نتيجة بحث الهاتف */}
-                        {comment.from?.id && phoneSearchResults[comment.from.id] && (
-                          <div className="mt-2">
-                            <Badge
-                              variant="secondary"
-                              className={`text-xs flex items-center gap-1 w-fit ${
-                                phoneSearchResults[comment.from.id] === "لا يوجد رقم" ||
-                                phoneSearchResults[comment.from.id] === "خطأ في البحث"
-                                  ? "bg-red-50 border-red-200 text-red-700"
-                                  : phoneSearchResults[comment.from.id] === "جاري البحث..."
-                                  ? "bg-yellow-50 border-yellow-200 text-yellow-700"
-                                  : "bg-green-50 border-green-200 text-green-700"
-                              }`}
-                            >
-                              <Phone className="w-3 h-3" />
-                              {phoneSearchResults[comment.from.id]}
-                              {!["لا يوجد رقم", "خطأ في البحث", "جاري البحث..."].includes(
-                                phoneSearchResults[comment.from.id]
-                              ) && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => copyToClipboard(phoneSearchResults[comment.from.id])}
-                                  className="h-4 w-4 p-0 hover:bg-green-200 ml-1"
-                                >
-                                  <Copy className="w-2 h-2" />
-                                </Button>
-                              )}
-                            </Badge>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-6 text-gray-500 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm">{text.noComments}</p>
-              </div>
+      <CardContent className="space-y-4">
+        {/* Post Content */}
+        {post.message && (
+          <div className="space-y-2">
+            <p className={`text-gray-700 dark:text-gray-300 leading-relaxed ${!expanded && post.message.length > 200 ? "line-clamp-3" : ""}`}>
+              {expanded ? post.message : truncateText(post.message, 200)}
+            </p>
+            {post.message.length > 200 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setExpanded(!expanded)}
+                className="p-0 h-auto text-blue-600 hover:text-blue-800"
+              >
+                {expanded ? (
+                  <>
+                    <ChevronUp className="w-4 h-4 ml-1" />
+                    عرض أقل
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-4 h-4 ml-1" />
+                    عرض المزيد
+                  </>
+                )}
+              </Button>
             )}
           </div>
         )}
-      
-    </CardContent>
-  </Card>
-);
 
+        <Separator />
+
+        {/* Engagement Stats */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Heart className="w-5 h-5 text-red-500" />
+              <span className="font-bold text-lg">{engagement.likes}</span>
+            </div>
+            <span className="text-xs text-gray-600">إعجاب</span>
+          </div>
+
+          <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <MessageSquare className="w-5 h-5 text-blue-500" />
+              <span className="font-bold text-lg">{engagement.comments}</span>
+            </div>
+            <span className="text-xs text-gray-600">تعليق</span>
+          </div>
+
+          <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Share2 className="w-5 h-5 text-green-500" />
+              <span className="font-bold text-lg">{engagement.shares}</span>
+            </div>
+            <span className="text-xs text-gray-600">مشاركة</span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center justify-between pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowComments(!showComments)}
+            className="gap-2"
+          >
+            <MessageSquare className="w-4 h-4" />
+            {showComments ? "إخفاء التعليقات" : "عرض التعليقات"}
+            {engagement.comments > 0 && (
+              <Badge variant="secondary" className="ml-1">
+                {engagement.comments}
+              </Badge>
+            )}
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="gap-2"
+            onClick={() => window.open(buildPostUrl(post), "_blank")}
+          >
+            <ExternalLink className="w-4 h-4" />
+            فتح في فيسبوك
+          </Button>
+        </div>
+
+        {/* Comments Section */}
+        {showComments && engagement.comments > 0 && (
+          <div className="border-t pt-4">
+            <ScrollArea className="max-h-80">
+              <CommentsSection 
+                postId={post.id} 
+                comments={post.comments?.data || []} 
+                searchingPhones={searchingPhones}
+                phoneSearchResults={phoneSearchResults}
+                onPhoneSearch={handlePhoneSearch}
+                language="ar"
+              />
+            </ScrollArea>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
 }

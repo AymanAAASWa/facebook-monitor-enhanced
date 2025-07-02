@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -10,14 +9,15 @@ import { Switch } from "@/components/ui/switch"
 import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { 
+  AlertCircle,
   Database, 
   Calendar, 
   Download, 
   X, 
-  AlertCircle,
   CheckCircle,
   Loader2,
-  Stop
+  Square,
+  StopCircle
 } from "lucide-react"
 import { type BulkLoadOptions, type LoadProgress } from "@/lib/bulk-data-loader"
 
@@ -39,11 +39,11 @@ export function BulkDataLoaderDialog({
     date.setMonth(date.getMonth() - 1) // آخر شهر افتراضياً
     return date.toISOString().split('T')[0]
   })
-  
+
   const [endDate, setEndDate] = useState(() => {
     return new Date().toISOString().split('T')[0]
   })
-  
+
   const [maxPosts, setMaxPosts] = useState(1000)
   const [includeComments, setIncludeComments] = useState(true)
   const [includePastYear, setIncludePastYear] = useState(false)
@@ -54,7 +54,7 @@ export function BulkDataLoaderDialog({
   const applyPresetRange = (preset: string) => {
     const now = new Date()
     let start = new Date()
-    
+
     switch (preset) {
       case 'last_week':
         start.setDate(now.getDate() - 7)
@@ -83,7 +83,7 @@ export function BulkDataLoaderDialog({
         setIncludePastYear(true)
         break
     }
-    
+
     setStartDate(start.toISOString().split('T')[0])
     setEndDate(now.toISOString().split('T')[0])
   }
@@ -98,15 +98,17 @@ export function BulkDataLoaderDialog({
       includeComments,
       batchSize
     }
-    
-    onStartLoad(options)
+
+    if (onStartLoad) {
+      onStartLoad(options)
+    }
   }
 
   // حساب المدة المتوقعة
   const estimatedDuration = () => {
     const batches = Math.ceil(maxPosts / batchSize)
     const minutes = batches * 0.5 // تقدير 30 ثانية لكل دفعة
-    
+
     if (minutes < 1) return 'أقل من دقيقة'
     if (minutes < 60) return `${Math.round(minutes)} دقيقة`
     return `${Math.round(minutes / 60)} ساعة`
@@ -263,9 +265,9 @@ export function BulkDataLoaderDialog({
                   {progressPercentage}%
                 </span>
               </div>
-              
+
               <Progress value={progressPercentage} className="w-full" />
-              
+
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-500">المصدر الحالي:</span>
@@ -310,11 +312,11 @@ export function BulkDataLoaderDialog({
                 onClick={() => {/* إيقاف التحميل */}}
                 className="flex-1"
               >
-                <Stop className="w-4 h-4 mr-2" />
+                <StopCircle className="w-4 h-4 mr-2" />
                 إيقاف التحميل
               </Button>
             )}
-            
+
             <Button 
               variant="outline" 
               onClick={onClose}
