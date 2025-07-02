@@ -579,4 +579,38 @@ export class FacebookService {
       }
     }
   }
+
+  // Method to get user posts
+  async getUserPosts(userId: string, limit = 200): Promise<{ data: FacebookPost[]; error?: string }> {
+    try {
+      let allPosts: any[] = []
+      let nextUrl = `https://graph.facebook.com/v18.0/${userId}/posts?fields=id,message,story,created_time,type,attachments,comments.limit(10){id,message,from,created_time},reactions.limit(10)&limit=100&access_token=${this.accessToken}`
+
+      while (nextUrl && allPosts.length < limit) {
+        const response = await fetch(nextUrl)
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const data = await response.json()
+        allPosts.push(...data.data)
+
+        // إذا كان هناك صفحة تالية ولم نصل للحد المطلوب
+        if (data.paging?.next && allPosts.length < limit) {
+          nextUrl = data.paging.next
+        } else {
+          break
+        }
+      }
+
+      // قطع النتائج للحد المطلوب
+      allPosts = allPosts.slice(0, limit)
+
+      return { data: allPosts, error: null }
+    } catch (error) {
+      console.error('Error fetching user posts:', error)
+      return { data: null, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
 }

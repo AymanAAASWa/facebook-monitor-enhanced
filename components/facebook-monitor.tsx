@@ -39,6 +39,8 @@ import {
   Facebook,
   Brain,
   Activity,
+  Bell,
+  Download,
 } from "lucide-react"
 import { firebaseService } from "@/lib/firebase-service"
 import { phoneDatabaseService } from "@/lib/phone-database-service"
@@ -48,6 +50,9 @@ import { facebookCommentsService } from "@/lib/facebook-comments-service"
 import type { AutoReplyRule } from "@/lib/facebook-comments-service"
 import { UserAnalyticsViewer } from "./user-analytics-viewer"
 import { DemographicsMapViewer } from "./demographics-map-viewer"
+import { BulkDataLoaderDialog } from "./bulk-data-loader-dialog"
+import { OfflineDataManager } from "./offline-data-manager"
+import { NotificationsPanel } from "./notifications-panel"
 
 export function FacebookMonitor() {
   const { data, loading, error, user, userSettings, fetchData, setUser, loadUserSettings } = useAppContext()
@@ -63,6 +68,7 @@ export function FacebookMonitor() {
   const [facebookUser, setFacebookUser] = useState<any>(null)
   const [advancedAnalytics, setAdvancedAnalytics] = useState<any>(null)
   const [analyticsView, setAnalyticsView] = useState<"basic" | "advanced">("basic")
+  const [isMonitoring, setIsMonitoring] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -326,11 +332,17 @@ export function FacebookMonitor() {
                 </Badge>
               )}
               {!isSetupComplete && (
-                <Badge variant="outline" className="bg-orange-50 border-orange-200 text-orange-700">
-                  <AlertCircle className="w-3 h-3 mr-1" />
-                  {text.setupRequired}
-                </Badge>
-              )}
+              <Badge variant="outline" className="bg-orange-50 border-orange-200 text-orange-700">
+                <AlertCircle className="w-3 h-3 mr-1" />
+                {text.setupRequired}
+              </Badge>
+            )}
+            {isMonitoring && (
+              <Badge variant="outline" className="bg-green-50 border-green-200 text-green-700 animate-pulse">
+                <Activity className="w-3 h-3 mr-1" />
+                مراقبة نشطة
+              </Badge>
+            )}
             </div>
             <div className="flex items-center gap-4 flex-wrap">
               <Badge variant="outline" className="bg-blue-50 border-blue-200">
@@ -517,7 +529,7 @@ export function FacebookMonitor() {
 
         {/* Main Content */}
         <Tabs defaultValue={isSetupComplete ? "posts" : "settings"} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 bg-white/50 backdrop-blur-sm">
+          <TabsList className="grid w-full grid-cols-9 bg-white/50 backdrop-blur-sm">
             <TabsTrigger value="posts" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
               {text.posts}
@@ -536,9 +548,13 @@ export function FacebookMonitor() {
               <Users className="w-4 h-4" />
               {text.users}
             </TabsTrigger>
-            <TabsTrigger value="enhanced" className="flex items-center gap-2">
+            <TabsTrigger value="bulk-loader" className="flex items-center gap-2">
+              <Download className="w-4 h-4" />
+              تحميل متقدم
+            </TabsTrigger>
+            <TabsTrigger value="offline" className="flex items-center gap-2">
               <Database className="w-4 h-4" />
-              البيانات المحسنة
+              الاستخدام الأوفلاين
             </TabsTrigger>
             <TabsTrigger value="phonedb" className="flex items-center gap-2">
               <Phone className="w-4 h-4" />
@@ -547,6 +563,10 @@ export function FacebookMonitor() {
             <TabsTrigger value="comments" className="flex items-center gap-2">
               <MessageCircle className="w-4 h-4" />
               {text.comments}
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <Bell className="w-4 h-4" />
+              التنبيهات
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="w-4 h-4" />
@@ -634,14 +654,59 @@ export function FacebookMonitor() {
             />
           </TabsContent>
 
-          <TabsContent value="enhanced">
-            <Card className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm`}>
-              <CardContent className="p-8 text-center">
-                <Database className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-xl font-semibold mb-2">البيانات المحسنة</h3>
-                <p className="text-gray-500">قريباً - عارض البيانات المحسنة</p>
-              </CardContent>
-            </Card>
+          <TabsContent value="bulk-loader">
+            {isSetupComplete && (userSettings?.sources?.length > 0 || facebookUser) ? (
+              <BulkDataLoaderDialog
+                accessToken={accessToken}
+                sources={userSettings?.sources || []}
+                darkMode={darkMode}
+                language={language}
+              />
+            ) : (
+              <Card className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm`}>
+                <CardContent className="p-8 text-center">
+                  <Download className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-xl font-semibold mb-2">إعداد مطلوب</h3>
+                  <p className="text-gray-500">يرجى إعداد رمز الوصول والمصادر في تبويب الإعدادات أولاً</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="offline">
+            {isSetupComplete && (userSettings?.sources?.length > 0 || facebookUser) ? (
+              <OfflineDataManager
+                accessToken={accessToken}
+                sources={userSettings?.sources || []}
+              />
+            ) : (
+              <Card className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm`}>
+                <CardContent className="p-8 text-center">
+                  <Database className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-xl font-semibold mb-2">إعداد مطلوب</h3>
+                  <p className="text-gray-500">يرجى إعداد رمز الوصول والمصادر في تبويب الإعدادات أولاً</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="notifications">
+            {isSetupComplete && (userSettings?.sources?.length > 0 || facebookUser) ? (
+              <NotificationsPanel
+                accessToken={accessToken}
+                sources={userSettings?.sources || []}
+                isEnabled={isMonitoring}
+                onToggle={setIsMonitoring}
+              />
+            ) : (
+              <Card className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm`}>
+                <CardContent className="p-8 text-center">
+                  <Bell className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-xl font-semibold mb-2">إعداد مطلوب</h3>
+                  <p className="text-gray-500">يرجى إعداد رمز الوصول والمصادر في تبويب الإعدادات أولاً</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="phonedb">
