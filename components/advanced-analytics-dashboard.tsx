@@ -403,7 +403,7 @@ export function AdvancedAnalyticsDashboard({
         {/* Time Analysis Tab */}
         <TabsContent value="time" className="space-y-6">
           {/* قسم تحليل التفاعلات المحسن */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
         <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -749,15 +749,15 @@ export function AdvancedAnalyticsDashboard({
                     </div>
                     <Progress value={(analytics.userAnalysis.userSegmentation.highlyActive / (analytics.basic.totalUsers || 1)) * 100} className="h-2" />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>نشط متوسط (3-10 أنشطة)</span>
                       <span className="font-bold text-blue-600">{analytics.userAnalysis.userSegmentation.moderatelyActive}</span>
                     </div>
-                    <Progress value={(analytics.userAnalysis.userSegmentation.moderatelyActive / (analytics.basic.totalUsers || 1)) * 100} className="h-2" />
+<Progress value={(analytics.userAnalysis.userSegmentation.moderatelyActive / (analytics.basic.totalUsers || 1)) * 100} className="h-2" />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>نشط قليل (1-2 أنشطة)</span>
@@ -765,7 +765,7 @@ export function AdvancedAnalyticsDashboard({
                     </div>
                     <Progress value={(analytics.userAnalysis.userSegmentation.lowActivity / (analytics.basic.totalUsers || 1)) * 100} className="h-2" />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>غير نشط</span>
