@@ -1,577 +1,516 @@
-
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import React, { useState, useEffect, useMemo } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import {
-  User,
-  MapPin,
-  Briefcase,
-  GraduationCap,
-  Heart,
-  Calendar,
-  Globe,
-  Users,
-  Camera,
-  MessageCircle,
-  Mail,
-  Star,
-  TrendingUp,
-  Activity,
-  ThumbsUp,
-  Share2,
-  Clock,
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { 
   BarChart3,
-  Network,
-  Download,
-  Eye
+  TrendingUp,
+  MessageSquare,
+  Heart,
+  Users,
+  Calendar,
+  Clock,
+  Activity,
+  ArrowLeft,
+  ExternalLink,
+  FileText,
+  Star,
+  Phone,
+  Copy
 } from "lucide-react"
-import { facebookUserAnalyticsService } from "@/lib/facebook-user-analytics-service"
+import type { FacebookPost } from "@/lib/facebook-api-service"
 
 interface UserAnalyticsViewerProps {
   userId: string
-  posts: any[]
+  posts: Array<FacebookPost & { source_id: string; source_name: string; source_type: string }>
   darkMode: boolean
   language: "ar" | "en"
   onClose: () => void
 }
 
-export function UserAnalyticsViewer({ 
-  userId, 
-  posts, 
-  darkMode, 
-  language, 
-  onClose 
+interface UserStats {
+  totalPosts: number
+  totalComments: number
+  totalLikes: number
+  avgPostLength: number
+  mostActiveDay: string
+  mostActiveHour: string
+  engagementRate: number
+  sources: string[]
+  activityTimeline: Array<{ date: string; posts: number; comments: number }>
+}
+
+export function UserAnalyticsViewer({
+  userId,
+  posts,
+  darkMode,
+  language,
+  onClose,
 }: UserAnalyticsViewerProps) {
-  const [analytics, setAnalytics] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("profile")
+  const [selectedTab, setSelectedTab] = useState("overview")
 
   const t = {
     ar: {
       userAnalytics: "تحليلات المستخدم",
-      profile: "الملف الشخصي",
-      comments: "التعليقات",
+      overview: "نظرة عامة",
       activity: "النشاط",
-      interactions: "التفاعلات",
-      insights: "الإحصائيات",
-      personalInfo: "المعلومات الشخصية",
-      contactInfo: "معلومات الاتصال",
-      workEducation: "العمل والتعليم",
-      socialActivity: "النشاط الاجتماعي",
+      engagement: "التفاعل",
+      timeline: "الخط الزمني",
+      back: "رجوع",
+      totalPosts: "إجمالي المنشورات",
       totalComments: "إجمالي التعليقات",
       totalLikes: "إجمالي الإعجابات",
-      avgLikes: "متوسط الإعجابات",
-      mostActiveHours: "ساعات النشاط الأكثر",
-      mostUsedWords: "الكلمات الأكثر استخداماً",
-      activityTimeline: "الخط الزمني للنشاط",
-      interactionNetwork: "شبكة التفاعل",
+      avgPostLength: "متوسط طول المنشور",
+      mostActiveDay: "أكثر الأيام نشاطاً",
+      mostActiveHour: "أكثر الساعات نشاطاً",
+      engagementRate: "معدل التفاعل",
+      activeSources: "المصادر النشطة",
+      recentPosts: "المنشورات الأخيرة",
       recentComments: "التعليقات الأخيرة",
-      userDetails: "تفاصيل المستخدم",
-      exportData: "تصدير البيانات",
-      loading: "جاري التحميل...",
-      error: "حدث خطأ",
-      close: "إغلاق",
       noData: "لا توجد بيانات",
-      birthday: "تاريخ الميلاد",
-      hometown: "المدينة الأصلية",
-      location: "الموقع الحالي",
-      relationship: "الحالة الاجتماعية",
-      religion: "الديانة",
-      political: "الآراء السياسية",
-      website: "الموقع الإلكتروني",
-      about: "نبذة عني",
-      work: "العمل",
-      education: "التعليم",
-      friends: "الأصدقاء",
-      photos: "الصور",
-      videos: "الفيديوهات",
-      events: "الأحداث",
-      pages: "الصفحات",
-      groups: "المجموعات"
+      viewProfile: "عرض الملف الشخصي",
+      copyUserId: "نسخ معرف المستخدم",
+      high: "عالي",
+      medium: "متوسط",
+      low: "منخفض",
+      posts: "منشورات",
+      comments: "تعليقات",
+      sunday: "الأحد",
+      monday: "الاثنين",
+      tuesday: "الثلاثاء",
+      wednesday: "الأربعاء",
+      thursday: "الخميس",
+      friday: "الجمعة",
+      saturday: "السبت",
     },
     en: {
-      userAnalytics: "User Analytics", 
-      profile: "Profile",
-      comments: "Comments",
-      activity: "Activity", 
-      interactions: "Interactions",
-      insights: "Insights",
-      personalInfo: "Personal Information",
-      contactInfo: "Contact Information",
-      workEducation: "Work & Education",
-      socialActivity: "Social Activity",
+      userAnalytics: "User Analytics",
+      overview: "Overview",
+      activity: "Activity",
+      engagement: "Engagement",
+      timeline: "Timeline",
+      back: "Back",
+      totalPosts: "Total Posts",
       totalComments: "Total Comments",
-      totalLikes: "Total Likes", 
-      avgLikes: "Average Likes",
-      mostActiveHours: "Most Active Hours",
-      mostUsedWords: "Most Used Words",
-      activityTimeline: "Activity Timeline",
-      interactionNetwork: "Interaction Network",
+      totalLikes: "Total Likes",
+      avgPostLength: "Avg Post Length",
+      mostActiveDay: "Most Active Day",
+      mostActiveHour: "Most Active Hour",
+      engagementRate: "Engagement Rate",
+      activeSources: "Active Sources",
+      recentPosts: "Recent Posts",
       recentComments: "Recent Comments",
-      userDetails: "User Details",
-      exportData: "Export Data",
-      loading: "Loading...",
-      error: "Error occurred",
-      close: "Close",
       noData: "No data available",
-      birthday: "Birthday",
-      hometown: "Hometown", 
-      location: "Current Location",
-      relationship: "Relationship Status",
-      religion: "Religion",
-      political: "Political Views",
-      website: "Website",
-      about: "About",
-      work: "Work",
-      education: "Education",
-      friends: "Friends",
-      photos: "Photos",
-      videos: "Videos", 
-      events: "Events",
-      pages: "Pages",
-      groups: "Groups"
-    }
+      viewProfile: "View Profile",
+      copyUserId: "Copy User ID",
+      high: "High",
+      medium: "Medium",
+      low: "Low",
+      posts: "Posts",
+      comments: "Comments",
+      sunday: "Sunday",
+      monday: "Monday",
+      tuesday: "Tuesday",
+      wednesday: "Wednesday",
+      thursday: "Thursday",
+      friday: "Friday",
+      saturday: "Saturday",
+    },
   }
 
   const text = t[language]
 
-  useEffect(() => {
-    loadUserAnalytics()
-  }, [userId])
+  // حساب إحصائيات المستخدم
+  const userStats = useMemo((): UserStats => {
+    const userPosts = posts.filter(post => post.from?.id === userId)
+    const userComments = posts.flatMap(post => 
+      post.comments?.data?.filter(comment => comment.from?.id === userId) || []
+    )
 
-  const loadUserAnalytics = async () => {
-    setLoading(true)
-    setError(null)
+    const totalLikes = userPosts.reduce((sum, post) => 
+      sum + (post.reactions?.summary?.total_count || 0), 0
+    )
 
-    try {
-      // Set access token from localStorage
-      const settings = JSON.parse(localStorage.getItem("facebook_settings") || "{}")
-      if (settings.accessToken) {
-        facebookUserAnalyticsService.setAccessToken(settings.accessToken)
+    const avgPostLength = userPosts.length > 0 
+      ? Math.round(userPosts.reduce((sum, post) => sum + (post.message?.length || 0), 0) / userPosts.length)
+      : 0
+
+    // تحليل أيام النشاط
+    const dayActivity = userPosts.reduce((acc, post) => {
+      if (post.created_time) {
+        const day = new Date(post.created_time).getDay()
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+        const dayName = dayNames[day]
+        acc[dayName] = (acc[dayName] || 0) + 1
       }
+      return acc
+    }, {} as Record<string, number>)
 
-      const result = await facebookUserAnalyticsService.getUserAnalytics(userId, posts)
-      if (result.error) {
-        setError(result.error)
+    const mostActiveDay = Object.entries(dayActivity).reduce((a, b) => 
+      dayActivity[a[0]] > dayActivity[b[0]] ? a : b, ['sunday', 0]
+    )[0]
+
+    // تحليل ساعات النشاط
+    const hourActivity = userPosts.reduce((acc, post) => {
+      if (post.created_time) {
+        const hour = new Date(post.created_time).getHours()
+        acc[hour] = (acc[hour] || 0) + 1
+      }
+      return acc
+    }, {} as Record<number, number>)
+
+    const mostActiveHour = Object.entries(hourActivity).reduce((a, b) => 
+      hourActivity[parseInt(a[0])] > hourActivity[parseInt(b[0])] ? a : b, ['0', 0]
+    )[0]
+
+    // معدل التفاعل
+    const engagementRate = userPosts.length > 0 
+      ? Math.round((totalLikes + userComments.length) / userPosts.length * 100) / 100
+      : 0
+
+    // المصادر النشطة
+    const sources = Array.from(new Set(userPosts.map(post => post.source_name)))
+
+    // الخط الزمني
+    const activityTimeline = userPosts.reduce((acc, post) => {
+      if (post.created_time) {
+        const date = new Date(post.created_time).toDateString()
+        const existing = acc.find(item => item.date === date)
+        if (existing) {
+          existing.posts += 1
+        } else {
+          acc.push({ date, posts: 1, comments: 0 })
+        }
+      }
+      return acc
+    }, [] as Array<{ date: string; posts: number; comments: number }>)
+
+    // إضافة التعليقات للخط الزمني
+    userComments.forEach(comment => {
+      const date = new Date(comment.created_time).toDateString()
+      const existing = activityTimeline.find(item => item.date === date)
+      if (existing) {
+        existing.comments += 1
       } else {
-        setAnalytics(result.data)
+        activityTimeline.push({ date, posts: 0, comments: 1 })
       }
-    } catch (error) {
-      setError("Failed to load user analytics")
-    } finally {
-      setLoading(false)
+    })
+
+    return {
+      totalPosts: userPosts.length,
+      totalComments: userComments.length,
+      totalLikes,
+      avgPostLength,
+      mostActiveDay,
+      mostActiveHour: `${mostActiveHour}:00`,
+      engagementRate,
+      sources,
+      activityTimeline: activityTimeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     }
+  }, [userId, posts])
+
+  const userInfo = useMemo(() => {
+    const userPost = posts.find(post => post.from?.id === userId)
+    return userPost?.from || null
+  }, [userId, posts])
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
   }
 
-  const handleExportData = async () => {
-    try {
-      const result = await facebookUserAnalyticsService.exportUserData(userId, posts)
-      if (result.data) {
-        const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `user_analytics_${userId}_${new Date().toISOString().split('T')[0]}.json`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-      }
-    } catch (error) {
-      console.error("Export failed:", error)
-    }
+  const getEngagementLevel = (rate: number) => {
+    if (rate > 10) return { label: text.high, color: "bg-green-100 text-green-800" }
+    if (rate > 5) return { label: text.medium, color: "bg-yellow-100 text-yellow-800" }
+    return { label: text.low, color: "bg-red-100 text-red-800" }
   }
 
-  if (loading) {
+  if (!userInfo) {
     return (
-      <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"} w-full max-w-6xl mx-auto`}>
-        <CardContent className="p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-300">{text.loading}</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (error) {
-    return (
-      <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"} w-full max-w-6xl mx-auto`}>
-        <CardContent className="p-8 text-center">
-          <p className="text-red-600 mb-4">{text.error}: {error}</p>
-          <Button onClick={onClose} variant="outline">{text.close}</Button>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (!analytics) {
-    return (
-      <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"} w-full max-w-6xl mx-auto`}>
-        <CardContent className="p-8 text-center">
-          <p className="text-gray-600 dark:text-gray-300 mb-4">{text.noData}</p>
-          <Button onClick={onClose} variant="outline">{text.close}</Button>
+      <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"} w-full max-w-4xl mx-auto`}>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>{text.userAnalytics}</span>
+            <Button variant="outline" onClick={onClose} size="sm">
+              <ArrowLeft className="w-4 h-4 ml-2" />
+              {text.back}
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <p className="text-gray-500">{text.noData}</p>
+          </div>
         </CardContent>
       </Card>
     )
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-6">
+    <div className="w-full max-w-6xl mx-auto space-y-4 sm:space-y-6 p-2 sm:p-4">
       {/* Header */}
       <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}`}>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Avatar className="w-20 h-20">
-                <AvatarImage src={analytics.user.picture?.data?.url || "/placeholder.svg"} />
-                <AvatarFallback><User className="w-8 h-8" /></AvatarFallback>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <Avatar className="w-12 h-12 sm:w-16 sm:h-16">
+                <AvatarImage src={userInfo.picture?.data?.url} alt={userInfo.name} />
+                <AvatarFallback>{userInfo.name?.charAt(0)}</AvatarFallback>
               </Avatar>
               <div>
-                <h1 className="text-2xl font-bold">{analytics.user.name}</h1>
-                <p className="text-gray-500">ID: {analytics.user.id}</p>
-                {analytics.user.about && (
-                  <p className="text-sm text-gray-600 mt-1">{analytics.user.about}</p>
-                )}
+                <CardTitle className="text-lg sm:text-xl">{userInfo.name}</CardTitle>
+                <CardDescription className="text-sm">معرف المستخدم: {userId}</CardDescription>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button onClick={handleExportData} variant="outline" size="sm">
-                <Download className="w-4 h-4 mr-2" />
-                {text.exportData}
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(`https://facebook.com/${userId}`, "_blank")}
+                className="text-xs sm:text-sm"
+              >
+                <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
+                {text.viewProfile}
               </Button>
-              <Button onClick={onClose} variant="outline">{text.close}</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyToClipboard(userId)}
+                className="text-xs sm:text-sm"
+              >
+                <Copy className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
+                {text.copyUserId}
+              </Button>
+              <Button variant="outline" onClick={onClose} size="sm" className="text-xs sm:text-sm">
+                <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
+                {text.back}
+              </Button>
             </div>
           </div>
-        </CardContent>
+        </CardHeader>
       </Card>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
-          <CardContent className="p-4 text-center">
-            <MessageCircle className="w-8 h-8 mx-auto mb-2 text-blue-500" />
-            <p className="text-2xl font-bold">{analytics.totalComments}</p>
-            <p className="text-sm text-gray-500">{text.totalComments}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}`}>
+          <CardContent className="p-3 sm:p-4 text-center">
+            <div className="text-xl sm:text-2xl font-bold text-blue-600 mb-1">
+              {userStats.totalPosts}
+            </div>
+            <div className="text-xs sm:text-sm text-gray-500">{text.totalPosts}</div>
           </CardContent>
         </Card>
 
-        <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
-          <CardContent className="p-4 text-center">
-            <ThumbsUp className="w-8 h-8 mx-auto mb-2 text-green-500" />
-            <p className="text-2xl font-bold">{analytics.totalLikes}</p>
-            <p className="text-sm text-gray-500">{text.totalLikes}</p>
+        <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}`}>
+          <CardContent className="p-3 sm:p-4 text-center">
+            <div className="text-xl sm:text-2xl font-bold text-green-600 mb-1">
+              {userStats.totalComments}
+            </div>
+            <div className="text-xs sm:text-sm text-gray-500">{text.totalComments}</div>
           </CardContent>
         </Card>
 
-        <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
-          <CardContent className="p-4 text-center">
-            <TrendingUp className="w-8 h-8 mx-auto mb-2 text-purple-500" />
-            <p className="text-2xl font-bold">{analytics.avgLikesPerComment.toFixed(1)}</p>
-            <p className="text-sm text-gray-500">{text.avgLikes}</p>
+        <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}`}>
+          <CardContent className="p-3 sm:p-4 text-center">
+            <div className="text-xl sm:text-2xl font-bold text-red-600 mb-1">
+              {userStats.totalLikes}
+            </div>
+            <div className="text-xs sm:text-sm text-gray-500">{text.totalLikes}</div>
           </CardContent>
         </Card>
 
-        <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
-          <CardContent className="p-4 text-center">
-            <Network className="w-8 h-8 mx-auto mb-2 text-orange-500" />
-            <p className="text-2xl font-bold">{analytics.interactionNetwork.length}</p>
-            <p className="text-sm text-gray-500">{text.interactions}</p>
+        <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}`}>
+          <CardContent className="p-3 sm:p-4 text-center">
+            <div className="text-xl sm:text-2xl font-bold text-purple-600 mb-1">
+              {userStats.engagementRate}
+            </div>
+            <div className="text-xs sm:text-sm text-gray-500">{text.engagementRate}</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="profile">{text.profile}</TabsTrigger>
-          <TabsTrigger value="comments">{text.comments}</TabsTrigger>
-          <TabsTrigger value="activity">{text.activity}</TabsTrigger>
-          <TabsTrigger value="interactions">{text.interactions}</TabsTrigger>
-          <TabsTrigger value="insights">{text.insights}</TabsTrigger>
+      {/* Detailed Analytics */}
+      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
+          <TabsTrigger value="overview" className="text-xs sm:text-sm p-2 sm:p-3">
+            <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
+            {text.overview}
+          </TabsTrigger>
+          <TabsTrigger value="activity" className="text-xs sm:text-sm p-2 sm:p-3">
+            <Activity className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
+            {text.activity}
+          </TabsTrigger>
+          <TabsTrigger value="engagement" className="text-xs sm:text-sm p-2 sm:p-3">
+            <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
+            {text.engagement}
+          </TabsTrigger>
+          <TabsTrigger value="timeline" className="text-xs sm:text-sm p-2 sm:p-3">
+            <Calendar className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
+            {text.timeline}
+          </TabsTrigger>
         </TabsList>
 
-        {/* Profile Tab */}
-        <TabsContent value="profile" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+        <TabsContent value="overview">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}`}>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="w-5 h-5" />
-                  {text.personalInfo}
-                </CardTitle>
+                <CardTitle className="text-base sm:text-lg">معلومات النشاط</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {analytics.user.email && (
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-gray-500" />
-                    <span>{analytics.user.email}</span>
-                  </div>
-                )}
-                {analytics.user.birthday && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-500" />
-                    <span>{text.birthday}: {analytics.user.birthday}</span>
-                  </div>
-                )}
-                {analytics.user.hometown && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-gray-500" />
-                    <span>{text.hometown}: {analytics.user.hometown.name}</span>
-                  </div>
-                )}
-                {analytics.user.location && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-gray-500" />
-                    <span>{text.location}: {analytics.user.location.name}</span>
-                  </div>
-                )}
-                {analytics.user.relationship_status && (
-                  <div className="flex items-center gap-2">
-                    <Heart className="w-4 h-4 text-gray-500" />
-                    <span>{text.relationship}: {analytics.user.relationship_status}</span>
-                  </div>
-                )}
-                {analytics.user.religion && (
-                  <div className="flex items-center gap-2">
-                    <Star className="w-4 h-4 text-gray-500" />
-                    <span>{text.religion}: {analytics.user.religion}</span>
-                  </div>
-                )}
-                {analytics.user.website && (
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-gray-500" />
-                    <a href={analytics.user.website} target="_blank" rel="noopener noreferrer" 
-                       className="text-blue-500 hover:underline">
-                      {analytics.user.website}
-                    </a>
-                  </div>
-                )}
+              <CardContent className="space-y-3 sm:space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">{text.avgPostLength}</span>
+                  <Badge variant="outline" className="text-xs">{userStats.avgPostLength} حرف</Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">{text.mostActiveDay}</span>
+                  <Badge variant="outline" className="text-xs">{text[userStats.mostActiveDay as keyof typeof text] || userStats.mostActiveDay}</Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">{text.mostActiveHour}</span>
+                  <Badge variant="outline" className="text-xs">{userStats.mostActiveHour}</Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">{text.engagementRate}</span>
+                  <Badge className={`text-xs ${getEngagementLevel(userStats.engagementRate).color}`}>
+                    {getEngagementLevel(userStats.engagementRate).label}
+                  </Badge>
+                </div>
               </CardContent>
             </Card>
 
-            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+            <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}`}>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Briefcase className="w-5 h-5" />
-                  {text.workEducation}
-                </CardTitle>
+                <CardTitle className="text-base sm:text-lg">{text.activeSources}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {analytics.user.work && analytics.user.work.length > 0 && (
-                  <div>
-                    <h4 className="font-medium mb-2">{text.work}</h4>
-                    {analytics.user.work.map((job: any, index: number) => (
-                      <div key={index} className="ml-4 mb-2">
-                        <p className="font-medium">{job.position?.name || "موظف"}</p>
-                        <p className="text-sm text-gray-500">{job.employer?.name}</p>
-                        {job.start_date && (
-                          <p className="text-xs text-gray-400">
-                            {job.start_date} - {job.end_date || "الآن"}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {analytics.user.education && analytics.user.education.length > 0 && (
-                  <div>
-                    <h4 className="font-medium mb-2">{text.education}</h4>
-                    {analytics.user.education.map((edu: any, index: number) => (
-                      <div key={index} className="ml-4 mb-2">
-                        <p className="font-medium">{edu.school?.name}</p>
-                        <p className="text-sm text-gray-500">{edu.type}</p>
-                        {edu.year && <p className="text-xs text-gray-400">تخرج: {edu.year.name}</p>}
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <CardContent>
+                <div className="space-y-2">
+                  {userStats.sources.map((source, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <span className="text-sm truncate">{source}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {posts.filter(p => p.from?.id === userId && p.source_name === source).length}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
-          </div>
-
-          {/* Additional Info */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {analytics.user.friends?.data && (
-              <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
-                <CardContent className="p-4 text-center">
-                  <Users className="w-6 h-6 mx-auto mb-2 text-blue-500" />
-                  <p className="font-bold">{analytics.user.friends.data.length}</p>
-                  <p className="text-sm text-gray-500">{text.friends}</p>
-                </CardContent>
-              </Card>
-            )}
-
-            {analytics.user.photos?.data && (
-              <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
-                <CardContent className="p-4 text-center">
-                  <Camera className="w-6 h-6 mx-auto mb-2 text-green-500" />
-                  <p className="font-bold">{analytics.user.photos.data.length}</p>
-                  <p className="text-sm text-gray-500">{text.photos}</p>
-                </CardContent>
-              </Card>
-            )}
-
-            {analytics.user.events?.data && (
-              <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
-                <CardContent className="p-4 text-center">
-                  <Calendar className="w-6 h-6 mx-auto mb-2 text-purple-500" />
-                  <p className="font-bold">{analytics.user.events.data.length}</p>
-                  <p className="text-sm text-gray-500">{text.events}</p>
-                </CardContent>
-              </Card>
-            )}
-
-            {analytics.user.pages?.data && (
-              <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
-                <CardContent className="p-4 text-center">
-                  <Star className="w-6 h-6 mx-auto mb-2 text-orange-500" />
-                  <p className="font-bold">{analytics.user.pages.data.length}</p>
-                  <p className="text-sm text-gray-500">{text.pages}</p>
-                </CardContent>
-              </Card>
-            )}
           </div>
         </TabsContent>
 
-        {/* Comments Tab */}
-        <TabsContent value="comments" className="space-y-4">
-          <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
+        <TabsContent value="activity">
+          <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}`}>
             <CardHeader>
-              <CardTitle>{text.recentComments} ({analytics.comments.length})</CardTitle>
+              <CardTitle className="text-base sm:text-lg">نشاط المستخدم التفصيلي</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {analytics.comments.slice(0, 20).map((comment: any) => (
-                  <div key={comment.id} className="border-b pb-3 last:border-b-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-500">
-                        {new Date(comment.created_time).toLocaleString("ar-EG")}
-                      </span>
+              <ScrollArea className="h-64 sm:h-96">
+                <div className="space-y-3">
+                  {posts
+                    .filter(post => post.from?.id === userId)
+                    .slice(0, 10)
+                    .map((post) => (
+                      <div key={post.id} className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <FileText className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">منشور في {post.source_name}</p>
+                          <p className="text-xs text-gray-500 mb-2">
+                            {new Date(post.created_time || '').toLocaleDateString("ar-EG")}
+                          </p>
+                          {post.message && (
+                            <p className="text-xs text-gray-600 line-clamp-2">
+                              {post.message.substring(0, 100)}...
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge variant="outline" className="text-xs">
+                              <Heart className="w-3 h-3 mr-1" />
+                              {post.reactions?.summary?.total_count || 0}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              <MessageSquare className="w-3 h-3 mr-1" />
+                              {post.comments?.data?.length || 0}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="engagement">
+          <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}`}>
+            <CardHeader>
+              <CardTitle className="text-base sm:text-lg">تحليل التفاعل</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">
+                      {Math.round(userStats.totalLikes / Math.max(userStats.totalPosts, 1))}
+                    </div>
+                    <div className="text-sm text-gray-600">متوسط الإعجابات/منشور</div>
+                  </div>
+                  <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {Math.round(userStats.totalComments / Math.max(userStats.totalPosts, 1))}
+                    </div>
+                    <div className="text-sm text-gray-600">متوسط التعليقات/منشور</div>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {Math.round((userStats.totalPosts + userStats.totalComments) / Math.max(userStats.sources.length, 1))}
+                    </div>
+                    <div className="text-sm text-gray-600">متوسط النشاط/مصدر</div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="timeline">
+          <Card className={`${darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}`}>
+            <CardHeader>
+              <CardTitle className="text-base sm:text-lg">الخط الزمني للنشاط</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-64 sm:h-96">
+                <div className="space-y-3">
+                  {userStats.activityTimeline.slice(0, 30).map((item, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-medium">
+                          {new Date(item.date).toLocaleDateString("ar-EG")}
+                        </span>
+                      </div>
                       <div className="flex items-center gap-2">
-                        {comment.like_count > 0 && (
-                          <Badge variant="secondary">
-                            <ThumbsUp className="w-3 h-3 mr-1" />
-                            {comment.like_count}
+                        {item.posts > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            <FileText className="w-3 h-3 mr-1" />
+                            {item.posts} {text.posts}
+                          </Badge>
+                        )}
+                        {item.comments > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            <MessageSquare className="w-3 h-3 mr-1" />
+                            {item.comments} {text.comments}
                           </Badge>
                         )}
                       </div>
                     </div>
-                    <p className="text-sm mb-2">{comment.message}</p>
-                    <p className="text-xs text-gray-400">
-                      على منشور: {comment.post_message}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Activity Tab */}
-        <TabsContent value="activity" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
-                  {text.mostActiveHours}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {analytics.mostActiveHours.map((hour: number) => (
-                    <div key={hour} className="flex items-center justify-between">
-                      <span>{hour}:00 - {hour + 1}:00</span>
-                      <Progress value={(hour / 23) * 100} className="w-20" />
-                    </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5" />
-                  {text.mostUsedWords}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {analytics.mostUsedWords.map((word: any, index: number) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <span className="font-medium">{word.word}</span>
-                      <Badge variant="outline">{word.count}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Interactions Tab */}  
-        <TabsContent value="interactions" className="space-y-4">
-          <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Network className="w-5 h-5" />
-                {text.interactionNetwork}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {analytics.interactionNetwork.map((interaction: any, index: number) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                        <User className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <span className="font-medium">{interaction.name}</span>
-                    </div>
-                    <Badge variant="secondary">{interaction.interactions} تفاعل</Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Insights Tab */}
-        <TabsContent value="insights" className="space-y-4">
-          <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5" />
-                {text.activityTimeline}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {analytics.activityTimeline.slice(-30).map((day: any, index: number) => (
-                  <div key={index} className="flex items-center justify-between p-2 border-b">
-                    <span className="text-sm">{new Date(day.date).toLocaleDateString("ar-EG")}</span>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="flex items-center gap-1">
-                        <MessageCircle className="w-3 h-3" />
-                        {day.comments}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <ThumbsUp className="w-3 h-3" />
-                        {day.likes}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>

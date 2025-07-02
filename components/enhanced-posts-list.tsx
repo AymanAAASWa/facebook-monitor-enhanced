@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useCallback, useRef, useEffect } from "react"
@@ -26,12 +27,14 @@ import {
   DownloadIcon,
   Heart,
   TrendingUp,
+  BarChart3,
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Image from "next/image"
 import type { FacebookPost } from "@/lib/facebook-api-service"
 import { phoneSearchService } from "@/lib/phone-search-service"
 import { UserAnalyticsViewer } from "./user-analytics-viewer"
+import { UserPostsViewer } from "./user-posts-viewer"
 
 interface EnhancedPostsListProps {
   posts: Array<FacebookPost & { source_id: string; source_name: string; source_type: string }>
@@ -41,44 +44,6 @@ interface EnhancedPostsListProps {
   onLoadOlderPosts: () => void
   darkMode: boolean
   language: "ar" | "en"
-}
-
-interface EnhancedUserRecord {
-  id: string
-  name: string
-  phone?: string
-  email?: string
-  picture?: string
-  birthday?: string
-  hometown?: string
-  location?: string
-  about?: string
-  relationship_status?: string
-  religion?: string
-  political?: string
-  website?: string
-  work?: {
-    employer: string
-    position: string
-    start_date?: string
-    end_date?: string
-  }[]
-  education?: {
-    school: string
-    type: string
-    year?: string
-  }[]
-  friends_count?: number
-  posts_count?: number
-  photos_count?: number
-  videos_count?: number
-  source: string
-  source_type: string
-  discovered_date: Date
-  last_updated: Date
-  is_active: boolean
-  tags: string[]
-  category: string
 }
 
 export function EnhancedPostsList({
@@ -99,7 +64,9 @@ export function EnhancedPostsList({
   const [phoneSearchResults, setPhoneSearchResults] = useState<{ [key: string]: string }>({})
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [selectedUserName, setSelectedUserName] = useState<string>("")
   const [showUserAnalytics, setShowUserAnalytics] = useState(false)
+  const [showUserPosts, setShowUserPosts] = useState(false)
 
   const t = {
     ar: {
@@ -125,6 +92,8 @@ export function EnhancedPostsList({
       phoneSearching: "جاري البحث...",
       copyPhone: "نسخ الرقم",
       viewProfile: "عرض الملف الشخصي",
+      viewPosts: "عرض المنشورات",
+      viewAnalytics: "عرض التحليلات",
       openPost: "فتح المنشور",
       unknown: "غير معروف",
       group: "جروب",
@@ -155,6 +124,8 @@ export function EnhancedPostsList({
       phoneSearching: "Searching...",
       copyPhone: "Copy Phone",
       viewProfile: "View Profile",
+      viewPosts: "View Posts",
+      viewAnalytics: "View Analytics",
       openPost: "Open Post",
       unknown: "Unknown",
       group: "Group",
@@ -205,8 +176,6 @@ export function EnhancedPostsList({
 
       if (result.found && result.phone) {
         setPhoneSearchResults((prev) => ({ ...prev, [userId]: result.phone! }))
-
-        // حفظ البيانات المحسنة في Firebase
         await saveEnhancedUserData(userId, userName, result.phone)
       } else {
         setPhoneSearchResults((prev) => ({ ...prev, [userId]: text.phoneNotFound }))
@@ -222,11 +191,9 @@ export function EnhancedPostsList({
     }
   }
 
-  // إضافة دالة لحفظ البيانات المحسنة
   const saveEnhancedUserData = async (userId: string, userName: string, phone?: string) => {
     try {
       console.log("Saving enhanced user data for:", userId, userName, phone)
-      // سيتم تنفيذ هذه الوظيفة لاحقاً عند الحاجة
     } catch (error) {
       console.error("Error saving enhanced user data:", error)
     }
@@ -329,27 +296,31 @@ export function EnhancedPostsList({
     return media
   }
 
-  const handleViewPost = (post: any) => {
-    setSelectedPost(post)
-  }
-
-  const handleUserClick = (userId: string) => {
+  // فتح عارض منشورات المستخدم
+  const handleViewUserPosts = (userId: string, userName: string) => {
     if (userId) {
       setSelectedUserId(userId)
-      setShowUserAnalytics(true)
+      setSelectedUserName(userName)
+      setShowUserPosts(true)
+      setShowUserAnalytics(false)
     }
   }
 
-  const handleUserAnalytics = (userId: string) => {
+  // فتح عارض تحليلات المستخدم
+  const handleViewUserAnalytics = (userId: string, userName: string) => {
     if (userId) {
       setSelectedUserId(userId)
+      setSelectedUserName(userName)
       setShowUserAnalytics(true)
+      setShowUserPosts(false)
     }
   }
 
-  const handleCloseUserAnalytics = () => {
+  const handleCloseUserViews = () => {
     setShowUserAnalytics(false)
+    setShowUserPosts(false)
     setSelectedUserId(null)
+    setSelectedUserName("")
   }
 
   // تصفية وترتيب المنشورات
@@ -389,15 +360,27 @@ export function EnhancedPostsList({
   if (!posts || (posts.length === 0 && !loading)) {
     return (
       <Card className={`${darkMode ? "bg-gray-800/90 border-gray-700" : "bg-white/90"} backdrop-blur-sm`}>
-        <CardContent className="p-8 text-center">
-          <FileText className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-          <h3 className="text-xl font-semibold mb-2">{text.noPosts}</h3>
-          <p className="text-gray-500">{text.tryLoading}</p>
+        <CardContent className="p-4 sm:p-8 text-center">
+          <FileText className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-gray-400" />
+          <h3 className="text-lg sm:text-xl font-semibold mb-2">{text.noPosts}</h3>
+          <p className="text-gray-500 text-sm sm:text-base">{text.tryLoading}</p>
         </CardContent>
       </Card>
     )
   }
 
+  // عرض عارض منشورات المستخدم
+  if (showUserPosts && selectedUserId) {
+    return (
+      <UserPostsViewer
+        userId={selectedUserId}
+        userName={selectedUserName}
+        onClose={handleCloseUserViews}
+      />
+    )
+  }
+
+  // عرض عارض تحليلات المستخدم
   if (showUserAnalytics && selectedUserId) {
     return (
       <UserAnalyticsViewer
@@ -405,29 +388,29 @@ export function EnhancedPostsList({
         posts={posts}
         darkMode={darkMode}
         language={language}
-        onClose={handleCloseUserAnalytics}
+        onClose={handleCloseUserViews}
       />
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* شريط البحث والتصفية */}
+    <div className="space-y-4 sm:space-y-6">
+      {/* شريط البحث والتصفية - محسن للموبايل */}
       <Card className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm`}>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="relative">
+        <CardContent className="p-3 sm:p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="relative col-span-1 sm:col-span-2 lg:col-span-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 placeholder={text.searchPosts}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 text-sm"
               />
             </div>
 
             <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-              <SelectTrigger>
+              <SelectTrigger className="text-sm">
                 <SelectValue placeholder={text.sortBy} />
               </SelectTrigger>
               <SelectContent>
@@ -440,14 +423,14 @@ export function EnhancedPostsList({
             <Button
               variant="outline"
               onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-sm"
             >
               {sortOrder === "asc" ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
-              {sortOrder === "asc" ? "تصاعدي" : "تنازلي"}
+              <span className="hidden sm:inline">{sortOrder === "asc" ? "تصاعدي" : "تنازلي"}</span>
             </Button>
 
             <Select value={filterSource} onValueChange={setFilterSource}>
-              <SelectTrigger>
+              <SelectTrigger className="text-sm">
                 <SelectValue placeholder={text.filterBy} />
               </SelectTrigger>
               <SelectContent>
@@ -461,12 +444,12 @@ export function EnhancedPostsList({
             </Select>
           </div>
 
-          <div className="flex items-center justify-between mt-4 text-sm text-gray-500">
+          <div className="flex items-center justify-between mt-3 sm:mt-4 text-xs sm:text-sm text-gray-500">
             <span>
               عرض {filteredAndSortedPosts.length} من {posts.length} منشور
             </span>
             {searchTerm && (
-              <Button variant="ghost" size="sm" onClick={() => setSearchTerm("")} className="text-xs">
+              <Button variant="ghost" size="sm" onClick={() => setSearchTerm("")} className="text-xs h-6">
                 مسح البحث
               </Button>
             )}
@@ -474,21 +457,21 @@ export function EnhancedPostsList({
         </CardContent>
       </Card>
 
-      {/* قائمة المنشورات */}
+      {/* قائمة المنشورات - محسنة للموبايل */}
       <div
         ref={scrollContainerRef}
-        className="space-y-6 max-h-screen overflow-y-auto"
-        style={{ maxHeight: "calc(100vh - 400px)" }}
+        className="space-y-4 sm:space-y-6 max-h-screen overflow-y-auto"
+        style={{ maxHeight: "calc(100vh - 300px)" }}
       >
         {filteredAndSortedPosts.map((post) => (
           <Card
             key={post.id}
             className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500`}
           >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="relative w-10 h-10 rounded-full overflow-hidden shadow-md">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-start justify-between mb-3 gap-2">
+                <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
+                  <div className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden shadow-md flex-shrink-0">
                     {post.from?.picture?.data?.url ? (
                       <Image
                         src={post.from.picture.data.url || "/placeholder.svg"}
@@ -497,55 +480,75 @@ export function EnhancedPostsList({
                         className="object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                      <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs sm:text-sm">
                         {post.from?.name?.charAt(0) || "?"}
                       </div>
                     )}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-bold text-base">{post.from?.name || text.unknown}</h3>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => window.open(buildUserUrl(post.from?.id || ""), "_blank")}
-                        className="h-5 w-5 p-0 hover:bg-blue-100"
-                      >
-                        <User className="w-3 h-3" />
-                      </Button>
-                      {post.from?.id && (
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1 sm:gap-2 mb-1 flex-wrap">
+                      <h3 className="font-bold text-sm sm:text-base truncate">{post.from?.name || text.unknown}</h3>
+                      
+                      {/* أزرار المستخدم - محسنة للموبايل */}
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handlePhoneSearch(post.from?.id || "", post.from?.name || "")}
-                          disabled={searchingPhones.has(post.from?.id || "")}
-                          className="h-5 w-5 p-0 hover:bg-green-100"
+                          onClick={() => window.open(buildUserUrl(post.from?.id || ""), "_blank")}
+                          className="h-5 w-5 p-0 hover:bg-blue-100"
+                          title={text.viewProfile}
                         >
-                          {searchingPhones.has(post.from?.id || "") ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Phone className="w-3 h-3" />
-                          )}
+                          <User className="w-3 h-3" />
                         </Button>
-                      )}
-                      {post.from?.id && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedUserId(post.from?.id || "")}
-                          className="h-5 w-5 p-0 hover:bg-purple-100"
-                          title="عرض التفاصيل المحسنة"
-                        >
-                          <Eye className="w-3 h-3" />
-                        </Button>
-                      )}
+                        
+                        {post.from?.id && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handlePhoneSearch(post.from?.id || "", post.from?.name || "")}
+                              disabled={searchingPhones.has(post.from?.id || "")}
+                              className="h-5 w-5 p-0 hover:bg-green-100"
+                              title={text.searchPhone}
+                            >
+                              {searchingPhones.has(post.from?.id || "") ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Phone className="w-3 h-3" />
+                              )}
+                            </Button>
+                            
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewUserPosts(post.from?.id || "", post.from?.name || "")}
+                              className="h-5 w-5 p-0 hover:bg-purple-100"
+                              title={text.viewPosts}
+                            >
+                              <FileText className="w-3 h-3" />
+                            </Button>
+                            
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewUserAnalytics(post.from?.id || "", post.from?.name || "")}
+                              className="h-5 w-5 p-0 hover:bg-orange-100"
+                              title={text.viewAnalytics}
+                            >
+                              <BarChart3 className="w-3 h-3" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
+                    
                     <p className="text-xs text-gray-500 mb-1">
                       {post.created_time
                         ? new Date(post.created_time).toLocaleString(language === "ar" ? "ar-EG" : "en-US")
                         : text.unknown}
                     </p>
-                    <div className="flex items-center gap-2 flex-wrap">
+                    
+                    <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                       <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200">
                         {post.source_type === "group" ? text.group : text.page}: {post.source_name}
                       </Badge>
@@ -564,7 +567,7 @@ export function EnhancedPostsList({
                           }`}
                         >
                           <Phone className="w-3 h-3" />
-                          {phoneSearchResults[post.from.id]}
+                          <span className="truncate max-w-20 sm:max-w-none">{phoneSearchResults[post.from.id]}</span>
                           {phoneSearchResults[post.from.id] !== text.phoneNotFound &&
                             phoneSearchResults[post.from.id] !== "خطأ في البحث" &&
                             phoneSearchResults[post.from.id] !== text.phoneSearching && (
@@ -582,10 +585,11 @@ export function EnhancedPostsList({
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
+                
+                <div className="flex items-center gap-1 flex-shrink-0">
                   <Badge variant="outline" className="bg-yellow-50 border-yellow-200 text-xs">
                     <Star className="w-3 h-3 mr-1 text-yellow-500" />
-                    {calculatePostScore(post)}
+                    <span className="hidden sm:inline">{calculatePostScore(post)}</span>
                   </Badge>
                   <Button
                     variant="ghost"
@@ -599,14 +603,14 @@ export function EnhancedPostsList({
               </div>
 
               {post.message && (
-                <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">{post.message}</p>
+                <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-xs sm:text-sm">{post.message}</p>
                 </div>
               )}
 
               {getPostMedia(post).length > 0 && (
-                <div className="mb-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="mb-4 sm:mb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
                     {getPostMedia(post).map((media) => (
                       <div key={media.id} className="relative group">
                         {media.type === "image" ? (
@@ -623,15 +627,15 @@ export function EnhancedPostsList({
                                 variant="secondary"
                                 size="sm"
                                 onClick={() => downloadMedia(media.url, `image_${media.id}.jpg`)}
-                                className="bg-white/90 hover:bg-white"
+                                className="bg-white/90 hover:bg-white h-6 w-6 p-0"
                               >
                                 <DownloadIcon className="w-3 h-3" />
                               </Button>
                             </div>
                             <div className="absolute bottom-2 left-2">
-                              <Badge variant="secondary" className="bg-white/90">
+                              <Badge variant="secondary" className="bg-white/90 text-xs">
                                 <ImageIcon className="w-3 h-3 mr-1" />
-                                صورة
+                                <span className="hidden sm:inline">صورة</span>
                               </Badge>
                             </div>
                           </div>
@@ -648,15 +652,15 @@ export function EnhancedPostsList({
                                 variant="secondary"
                                 size="sm"
                                 onClick={() => downloadMedia(media.url, `video_${media.id}.mp4`)}
-                                className="bg-white/90 hover:bg-white"
+                                className="bg-white/90 hover:bg-white h-6 w-6 p-0"
                               >
                                 <DownloadIcon className="w-3 h-3" />
                               </Button>
                             </div>
                             <div className="absolute bottom-2 left-2">
-                              <Badge variant="secondary" className="bg-white/90">
+                              <Badge variant="secondary" className="bg-white/90 text-xs">
                                 <Video className="w-3 h-3 mr-1" />
-                                فيديو
+                                <span className="hidden sm:inline">فيديو</span>
                               </Badge>
                             </div>
                           </div>
@@ -679,12 +683,12 @@ export function EnhancedPostsList({
                     {expandedComments.has(post.id) ? (
                       <>
                         <EyeOff className="w-4 h-4 mr-2" />
-                        {text.hideComments}
+                        <span className="hidden sm:inline">{text.hideComments}</span>
                       </>
                     ) : (
                       <>
                         <Eye className="w-4 h-4 mr-2" />
-                        {text.showComments}
+                        <span className="hidden sm:inline">{text.showComments}</span>
                       </>
                     )}
                     <Badge variant="outline" className="ml-2 text-xs">
@@ -693,52 +697,56 @@ export function EnhancedPostsList({
                   </Button>
 
                   {expandedComments.has(post.id) && (
-                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                    <div className="space-y-2 sm:space-y-3 max-h-64 overflow-y-auto">
                       {post.comments.data.map((comment) => (
                         <div
                           key={comment.id}
-                          className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                          className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                         >
-                          <div className="relative">
+                          <div className="relative flex-shrink-0">
                             {comment.from?.picture?.data?.url ? (
                               <img
                                 src={comment.from.picture.data.url}
                                 alt={comment.from.name || "User"}
-                                className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
+                                className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-white shadow-sm"
                               />
                             ) : (
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
-                                <User className="w-5 h-5 text-white" />
+                              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                                <User className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                               </div>
                             )}
                             {comment.user_likes && (
-                              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                                <Heart className="w-2 h-2 text-white fill-current" />
+                              <div className="absolute -bottom-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded-full flex items-center justify-center">
+                                <Heart className="w-1.5 h-1.5 sm:w-2 sm:h-2 text-white fill-current" />
                               </div>
                             )}
                           </div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <div className="flex items-center gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1 gap-2">
+                              <div className="flex items-center gap-1 sm:gap-2 min-w-0">
                                 <button
-                                  onClick={() => handleUserClick(comment.from?.id || "")}
-                                  className="font-medium text-sm hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                                  onClick={() =>
+                                    handleViewUserAnalytics(comment.from?.id || "", comment.from?.name || "")
+                                  }
+                                  className="font-medium text-xs sm:text-sm hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer truncate"
                                 >
                                   {comment.from?.name || "مستخدم"}
                                 </button>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-gray-500 flex-shrink-0">
                                   {new Date(comment.created_time).toLocaleString("ar-EG")}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-2 text-xs text-gray-500">
+                              <div className="flex items-center gap-1 text-xs text-gray-500 flex-shrink-0">
                                 {comment.like_count > 0 && (
                                   <span className="flex items-center gap-1">
                                     <Heart className="w-3 h-3" />
-                                    {comment.like_count}
+                                    <span className="hidden sm:inline">{comment.like_count}</span>
                                   </span>
                                 )}
                                 <button
-                                  onClick={() => handleUserAnalytics(comment.from?.id || "")}
+                                  onClick={() =>
+                                    handleViewUserAnalytics(comment.from?.id || "", comment.from?.name || "")
+                                  }
                                   className="text-blue-500 hover:text-blue-700 p-1 rounded"
                                   title="تحليلات المستخدم"
                                 >
@@ -746,7 +754,9 @@ export function EnhancedPostsList({
                                 </button>
                               </div>
                             </div>
-                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{comment.message}</p>
+                            <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                              {comment.message}
+                            </p>
                           </div>
                         </div>
                       ))}
@@ -755,8 +765,8 @@ export function EnhancedPostsList({
                 </div>
               ) : (
                 <div className="border-t pt-3">
-                  <div className="text-center py-3 text-gray-500 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                    <MessageCircle className="w-6 h-6 mx-auto mb-1 text-gray-400" />
+                  <div className="text-center py-2 sm:py-3 text-gray-500 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <MessageCircle className="w-4 h-4 sm:w-6 sm:h-6 mx-auto mb-1 text-gray-400" />
                     <p className="text-xs">{text.noComments}</p>
                   </div>
                 </div>
@@ -767,10 +777,10 @@ export function EnhancedPostsList({
 
         {/* Load More Button / Infinite Scroll Indicator */}
         {hasMorePosts && (
-          <div className="flex flex-col items-center gap-4 py-8">
+          <div className="flex flex-col items-center gap-4 py-6 sm:py-8">
             {loadingOlder ? (
               <div className="flex items-center gap-2 text-blue-600">
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
                 <span className="text-sm font-medium">{text.loadingOlder}</span>
               </div>
             ) : (
@@ -778,7 +788,7 @@ export function EnhancedPostsList({
                 <Button
                   onClick={onLoadOlderPosts}
                   variant="outline"
-                  className="mb-2 bg-white/50 backdrop-blur-sm hover:bg-white/70"
+                  className="mb-2 bg-white/50 backdrop-blur-sm hover:bg-white/70 text-sm"
                 >
                   <ChevronDown className="w-4 h-4 mr-2" />
                   {text.loadOlderPosts}
@@ -790,8 +800,8 @@ export function EnhancedPostsList({
         )}
 
         {!hasMorePosts && filteredAndSortedPosts.length > 0 && (
-          <div className="text-center py-8">
-            <div className="inline-flex items-center gap-2 text-gray-500 bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-full">
+          <div className="text-center py-6 sm:py-8">
+            <div className="inline-flex items-center gap-2 text-gray-500 bg-gray-100 dark:bg-gray-800 px-3 sm:px-4 py-2 rounded-full">
               <CheckCircle className="w-4 h-4" />
               <span className="text-sm">{text.noMorePosts}</span>
             </div>
