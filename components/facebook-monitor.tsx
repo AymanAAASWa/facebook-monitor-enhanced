@@ -305,7 +305,7 @@ export function FacebookMonitor() {
           : "bg-gradient-to-br from-blue-50 to-indigo-100 text-gray-900"
       }`}
     >
-      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+      <div className="container mx-auto p-4">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>

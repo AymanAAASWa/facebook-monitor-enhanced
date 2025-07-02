@@ -106,7 +106,7 @@ export function AnalyticsDashboard({ data, darkMode, language }: AnalyticsDashbo
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">

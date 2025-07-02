@@ -480,17 +480,290 @@ export function EnhancedPostsList({
         className="space-y-6 max-h-screen overflow-y-auto"
         style={{ maxHeight: "calc(100vh - 400px)" }}
       >
-        {filteredAndSortedPosts.map((post) => {
-          return (
-            <Card className="w-full mx-2 sm:mx-0">
-              <CardHeader className="pb-4 sm:pb-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
-                  {/* Post content here */}
+        {filteredAndSortedPosts.map((post) => (
+          <Card
+            key={post.id}
+            className={`${darkMode ? "bg-gray-800/95 border-gray-700" : "bg-white/95"} backdrop-blur-sm hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500`}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="relative w-10 h-10 rounded-full overflow-hidden shadow-md">
+                    {post.from?.picture?.data?.url ? (
+                      <Image
+                        src={post.from.picture.data.url || "/placeholder.svg"}
+                        alt={post.from?.name || "User"}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                        {post.from?.name?.charAt(0) || "?"}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-base">{post.from?.name || text.unknown}</h3>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => window.open(buildUserUrl(post.from?.id || ""), "_blank")}
+                        className="h-5 w-5 p-0 hover:bg-blue-100"
+                      >
+                        <User className="w-3 h-3" />
+                      </Button>
+                      {post.from?.id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handlePhoneSearch(post.from?.id || "", post.from?.name || "")}
+                          disabled={searchingPhones.has(post.from?.id || "")}
+                          className="h-5 w-5 p-0 hover:bg-green-100"
+                        >
+                          {searchingPhones.has(post.from?.id || "") ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Phone className="w-3 h-3" />
+                          )}
+                        </Button>
+                      )}
+                      {post.from?.id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedUserId(post.from?.id || "")}
+                          className="h-5 w-5 p-0 hover:bg-purple-100"
+                          title="عرض التفاصيل المحسنة"
+                        >
+                          <Eye className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mb-1">
+                      {post.created_time
+                        ? new Date(post.created_time).toLocaleString(language === "ar" ? "ar-EG" : "en-US")
+                        : text.unknown}
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200">
+                        {post.source_type === "group" ? text.group : text.page}: {post.source_name}
+                      </Badge>
+
+                      {/* عرض نتيجة البحث عن الرقم */}
+                      {post.from?.id && phoneSearchResults[post.from.id] && (
+                        <Badge
+                          variant="secondary"
+                          className={`text-xs flex items-center gap-1 ${
+                            phoneSearchResults[post.from.id] === text.phoneNotFound ||
+                            phoneSearchResults[post.from.id] === "خطأ في البحث"
+                              ? "bg-red-50 border-red-200 text-red-700"
+                              : phoneSearchResults[post.from.id] === text.phoneSearching
+                                ? "bg-yellow-50 border-yellow-200 text-yellow-700"
+                                : "bg-green-50 border-green-200 text-green-700"
+                          }`}
+                        >
+                          <Phone className="w-3 h-3" />
+                          {phoneSearchResults[post.from.id]}
+                          {phoneSearchResults[post.from.id] !== text.phoneNotFound &&
+                            phoneSearchResults[post.from.id] !== "خطأ في البحث" &&
+                            phoneSearchResults[post.from.id] !== text.phoneSearching && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => copyToClipboard(phoneSearchResults[post.from.id])}
+                                className="h-4 w-4 p-0 hover:bg-green-200"
+                              >
+                                <Copy className="w-2 h-2" />
+                              </Button>
+                            )}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </CardHeader>
-            </Card>
-          )
-        })}
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline" className="bg-yellow-50 border-yellow-200 text-xs">
+                    <Star className="w-3 h-3 mr-1 text-yellow-500" />
+                    {calculatePostScore(post)}
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.open(buildPostUrl(post), "_blank")}
+                    className="hover:bg-blue-100 h-6 w-6 p-0"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+
+              {post.message && (
+                <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">{post.message}</p>
+                </div>
+              )}
+
+              {getPostMedia(post).length > 0 && (
+                <div className="mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {getPostMedia(post).map((media) => (
+                      <div key={media.id} className="relative group">
+                        {media.type === "image" ? (
+                          <div className="relative aspect-square rounded-lg overflow-hidden shadow-lg">
+                            <Image
+                              src={media.url || "/placeholder.svg"}
+                              alt="Post image"
+                              fill
+                              className="object-cover hover:scale-105 transition-transform cursor-pointer"
+                              onClick={() => window.open(media.url, "_blank")}
+                            />
+                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => downloadMedia(media.url, `image_${media.id}.jpg`)}
+                                className="bg-white/90 hover:bg-white"
+                              >
+                                <DownloadIcon className="w-3 h-3" />
+                              </Button>
+                            </div>
+                            <div className="absolute bottom-2 left-2">
+                              <Badge variant="secondary" className="bg-white/90">
+                                <ImageIcon className="w-3 h-3 mr-1" />
+                                صورة
+                              </Badge>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="relative aspect-video rounded-lg overflow-hidden shadow-lg bg-black">
+                            <video
+                              src={media.url}
+                              className="w-full h-full object-cover"
+                              controls
+                              poster="/placeholder.svg?height=300&width=400"
+                            />
+                            <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => downloadMedia(media.url, `video_${media.id}.mp4`)}
+                                className="bg-white/90 hover:bg-white"
+                              >
+                                <DownloadIcon className="w-3 h-3" />
+                              </Button>
+                            </div>
+                            <div className="absolute bottom-2 left-2">
+                              <Badge variant="secondary" className="bg-white/90">
+                                <Video className="w-3 h-3 mr-1" />
+                                فيديو
+                              </Badge>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {post.comments?.data && post.comments.data.length > 0 ? (
+                <div className="border-t pt-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleToggleComments(post.id)}
+                    className="mb-3 hover:bg-blue-50 text-sm"
+                  >
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    {expandedComments.has(post.id) ? (
+                      <>
+                        <EyeOff className="w-4 h-4 mr-2" />
+                        {text.hideComments}
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-4 h-4 mr-2" />
+                        {text.showComments}
+                      </>
+                    )}
+                    <Badge variant="outline" className="ml-2 text-xs">
+                      {post.comments.data.length}
+                    </Badge>
+                  </Button>
+
+                  {expandedComments.has(post.id) && (
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                      {post.comments.data.map((comment) => (
+                        <div
+                          key={comment.id}
+                          className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                        >
+                          <div className="relative">
+                            {comment.from?.picture?.data?.url ? (
+                              <img
+                                src={comment.from.picture.data.url}
+                                alt={comment.from.name || "User"}
+                                className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                                <User className="w-5 h-5 text-white" />
+                              </div>
+                            )}
+                            {comment.user_likes && (
+                              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                                <Heart className="w-2 h-2 text-white fill-current" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleUserClick(comment.from?.id || "")}
+                                  className="font-medium text-sm hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                                >
+                                  {comment.from?.name || "مستخدم"}
+                                </button>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(comment.created_time).toLocaleString("ar-EG")}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-gray-500">
+                                {comment.like_count > 0 && (
+                                  <span className="flex items-center gap-1">
+                                    <Heart className="w-3 h-3" />
+                                    {comment.like_count}
+                                  </span>
+                                )}
+                                <button
+                                  onClick={() => handleUserAnalytics(comment.from?.id || "")}
+                                  className="text-blue-500 hover:text-blue-700 p-1 rounded"
+                                  title="تحليلات المستخدم"
+                                >
+                                  <TrendingUp className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{comment.message}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="border-t pt-3">
+                  <div className="text-center py-3 text-gray-500 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <MessageCircle className="w-6 h-6 mx-auto mb-1 text-gray-400" />
+                    <p className="text-xs">{text.noComments}</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
 
         {/* Load More Button / Infinite Scroll Indicator */}
         {hasMorePosts && (
