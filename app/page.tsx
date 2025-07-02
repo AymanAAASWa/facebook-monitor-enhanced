@@ -3,6 +3,21 @@
 import { useState, useEffect } from "react"
 import { AppProvider } from "@/lib/app-context"
 import { FacebookMonitor } from "@/components/facebook-monitor"
+import { EnhancedDataViewer } from "@/components/enhanced-data-viewer"
+import { AnalyticsDashboard } from "@/components/analytics-dashboard"
+import { DocumentationExport } from "@/components/documentation-export"
+import { ProjectStructureViewer } from "@/components/project-structure-viewer"
+import { 
+  BarChart3, 
+  Users, 
+  MessageSquare, 
+  TrendingUp, 
+  Database,
+  Settings,
+  BookOpen,
+  Activity,
+  FolderTree
+} from "lucide-react"
 
 export default function HomePage() {
   const [mounted, setMounted] = useState(false)

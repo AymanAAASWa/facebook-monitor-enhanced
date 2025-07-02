@@ -329,14 +329,15 @@ export function PostCard({
                   {text.showComments}
                 </>
               )}
-              <Badge variant="outline" className="ml-2 text-xs">
-                {post.comments.data.length}
+              <Badge variant="secondary" className="ml-2 text-xs">
+                {post.comments?.data?.length || 0}
               </Badge>
             </Button>
 
-            {expandedComments.has(post.id) && (
-              <div className="space-y-3 max-h-64 overflow-y-auto">
-                {post.comments.data.map((comment) => (
+            {expandedComments.has(post.id) && post.comments?.data && (
+              <ScrollArea className="max-h-80">
+                <div className="space-y-3 pr-4">
+                  {post.comments.data.map((comment) => (
                   <div
                     key={comment.id}
                     className="flex gap-2 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-600 rounded-lg shadow-sm"
@@ -386,7 +387,8 @@ export function PostCard({
                     </div>
                   </div>
                 ))}
-              </div>
+                </div>
+              </ScrollArea>
             )}
           </div>
         ) : (
