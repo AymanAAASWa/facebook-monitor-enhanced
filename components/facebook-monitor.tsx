@@ -157,7 +157,7 @@ export function FacebookMonitor() {
 
   const t = {
     ar: {
-      title: "مراقب فيسبوك المتقدم",
+      title: "FB Tracker Pro",
       posts: "المنشورات",
       analytics: "التحليلات",
       advancedAnalytics: "التحليلات المتقدمة",
@@ -195,7 +195,7 @@ export function FacebookMonitor() {
       advancedAnalyticsTitle: "تحليلات متقدمة",
     },
     en: {
-      title: "Advanced Facebook Monitor",
+      title: "FB Tracker Pro",
       posts: "Posts",
       analytics: "Analytics",
       advancedAnalytics: "Advanced Analytics",

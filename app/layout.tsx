@@ -6,9 +6,9 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'FB Tracker Pro',
-  description: 'FB Tracker Pro By Ayman Abdelkawy',
-  keywords: 'Facebook, Tracker, Analytics, Social Media Monitoring',
-  author: 'Ayman Abdelkawy',
+  description: 'FB Tracker Pro By Ayman Abdelkawy - Professional Facebook Analytics & Monitoring Tool',
+  keywords: 'Facebook, Tracker, Analytics, Social Media Monitoring, FB Tracker Pro',
+  author: 'Ayman Abdelkawy - +201003465095',
 }
 
 export default function RootLayout({

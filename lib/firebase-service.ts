@@ -52,6 +52,13 @@ export interface PhoneRecord {
 }
 
 export class FirebaseService {
+  constructor() {
+    // التأكد من تهيئة Firebase
+    if (typeof window !== 'undefined') {
+      console.log('FirebaseService initialized')
+    }
+  }
+
   // Authentication
   async signIn(email: string, password: string): Promise<{ success: boolean; error?: string; user?: User }> {
     try {
@@ -232,3 +239,6 @@ export class FirebaseService {
 }
 
 export const firebaseService = new FirebaseService()
+
+// تصدير افتراضي أيضاً للتوافق
+export default firebaseService

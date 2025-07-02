@@ -51,8 +51,8 @@ export function FacebookLoginForm({ darkMode, language, onLoginSuccess, onLoginE
 
   const t = {
     ar: {
-      title: "تسجيل الدخول بـ Facebook",
-      subtitle: "الوصول إلى جميع البيانات والصلاحيات",
+      title: "FB Tracker Pro - دخول Facebook",
+      subtitle: "استخدم حسابك على Facebook للدخول إلى FB Tracker Pro",
       loginButton: "تسجيل الدخول بـ Facebook",
       testLoginButton: "تسجيل دخول تجريبي",
       logoutButton: "تسجيل الخروج",
@@ -90,8 +90,8 @@ export function FacebookLoginForm({ darkMode, language, onLoginSuccess, onLoginE
       loginSuccessful: "تم تسجيل الدخول بنجاح! يمكنك الآن استخدام جميع الميزات.",
     },
     en: {
-      title: "Facebook Login",
-      subtitle: "Access all data and permissions",
+      title: "FB Tracker Pro - Facebook Login",
+      subtitle: "Use your Facebook account to access FB Tracker Pro",
       loginButton: "Login with Facebook",
       testLoginButton: "Test Login",
       logoutButton: "Logout",

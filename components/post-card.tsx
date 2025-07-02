@@ -3,6 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   User,
   Phone,
@@ -309,96 +310,165 @@ export function PostCard({
           </div>
         )}
 
-        {post.comments?.data && post.comments.data.length > 0 ? (
-          <div className="border-t pt-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onToggleComments(post.id)}
-              className="mb-3 hover:bg-blue-50 text-sm"
-            >
-              <MessageCircle className="w-4 h-4 mr-2" />
-              {expandedComments.has(post.id) ? (
-                <>
-                  <EyeOff className="w-4 h-4 mr-2" />
-                  {text.hideComments}
-                </>
-              ) : (
-                <>
-                  <Eye className="w-4 h-4 mr-2" />
-                  {text.showComments}
-                </>
-              )}
-              <Badge variant="secondary" className="ml-2 text-xs">
-                {post.comments?.data?.length || 0}
-              </Badge>
-            </Button>
-
-            {expandedComments.has(post.id) && post.comments?.data && (
-              <ScrollArea className="max-h-80">
-                <div className="space-y-3 pr-4">
-                  {post.comments.data.map((comment) => (
-                  <div
-                    key={comment.id}
-                    className="flex gap-2 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-600 rounded-lg shadow-sm"
-                  >
-                    <div className="relative w-6 h-6 rounded-full overflow-hidden shadow">
-                      <div className="w-full h-full bg-gradient-to-r from-green-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
-                        {comment.from?.name?.charAt(0) || "?"}
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="font-semibold text-xs">{comment.from?.name || text.unknown}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => window.open(buildUserUrl(comment.from?.id || ""), "_blank")}
-                          className="h-3 w-3 p-0 hover:bg-blue-100"
-                        >
-                          <User className="w-2 h-2" />
-                        </Button>
-                        {comment.from?.id && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              onPhoneSearch(comment.from?.id || "", comment.from?.name || "", post.source_name || "")
-                            }
-                            disabled={searchingPhones.has(comment.from?.id || "")}
-                            className="h-3 w-3 p-0 hover:bg-green-100"
-                          >
-                            {searchingPhones.has(comment.from?.id || "") ? (
-                              <Loader2 className="w-2 h-2 animate-spin" />
-                            ) : (
-                              <Phone className="w-2 h-2" />
-                            )}
-                          </Button>
-                        )}
-                        <span className="text-xs text-gray-500">
-                          {comment.created_time
-                            ? new Date(comment.created_time).toLocaleString(language === "ar" ? "ar-EG" : "en-US")
-                            : text.unknown}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-700 dark:text-gray-300 bg-white/50 dark:bg-gray-800/50 p-2 rounded">
-                        {comment.message || "لا يوجد نص"}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                </div>
-              </ScrollArea>
+        {/* قسم التعليقات */}
+        <div className="border-t pt-3">
+          {/* عرض زر التعليقات دائماً مع العدد الصحيح */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onToggleComments(post.id)}
+            className="mb-3 hover:bg-blue-50 text-sm w-full justify-start"
+          >
+            <MessageCircle className="w-4 h-4 mr-2" />
+            {expandedComments.has(post.id) ? (
+              <>
+                <EyeOff className="w-4 h-4 mr-2" />
+                {text.hideComments}
+              </>
+            ) : (
+              <>
+                <Eye className="w-4 h-4 mr-2" />
+                {text.showComments}
+              </>
             )}
-          </div>
-        ) : (
-          <div className="border-t pt-3">
-            <div className="text-center py-3 text-gray-500 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <MessageCircle className="w-6 h-6 mx-auto mb-1 text-gray-400" />
-              <p className="text-xs">{text.noComments}</p>
+            <Badge variant="secondary" className="ml-auto text-xs">
+              {post.comments?.summary?.total_count || post.comments?.data?.length || 0}
+            </Badge>
+          </Button>
+
+          {/* عرض التعليقات مع التمرير */}
+          {expandedComments.has(post.id) && (
+            <div className="mt-3">
+              {post.comments?.data && post.comments.data.length > 0 ? (
+                <ScrollArea className="h-80 w-full border rounded-md bg-gray-50/50 dark:bg-gray-800/50">
+                  <div className="space-y-3 p-4">
+                    {post.comments.data.map((comment, index) => (
+                      <div
+                        key={comment.id}
+                        className={`flex gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm border-l-2 border-l-blue-400 ${
+                          index < post.comments.data.length - 1 ? 'mb-3' : ''
+                        }`}
+                      >
+                        {/* صورة المستخدم */}
+                        <div className="relative w-8 h-8 rounded-full overflow-hidden shadow-md flex-shrink-0">
+                          {comment.from?.picture?.data?.url ? (
+                            <Image
+                              src={comment.from.picture.data.url}
+                              alt={comment.from?.name || "User"}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-r from-green-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                              {comment.from?.name?.charAt(0) || "?"}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* محتوى التعليق */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                              {comment.from?.name || text.unknown}
+                            </span>
+                            
+                            {/* أزرار الإجراءات */}
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => window.open(buildUserUrl(comment.from?.id || ""), "_blank")}
+                                className="h-6 w-6 p-0 hover:bg-blue-100"
+                              >
+                                <User className="w-3 h-3" />
+                              </Button>
+                              {comment.from?.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    onPhoneSearch(comment.from?.id || "", comment.from?.name || "", post.source_name || "")
+                                  }
+                                  disabled={searchingPhones.has(comment.from?.id || "")}
+                                  className="h-6 w-6 p-0 hover:bg-green-100"
+                                >
+                                  {searchingPhones.has(comment.from?.id || "") ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Phone className="w-3 h-3" />
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+
+                            <span className="text-xs text-gray-500 ml-auto">
+                              {comment.created_time
+                                ? new Date(comment.created_time).toLocaleString(language === "ar" ? "ar-EG" : "en-US")
+                                : text.unknown}
+                            </span>
+                          </div>
+
+                          {/* نص التعليق */}
+                          <div className="bg-gray-100 dark:bg-gray-600 p-3 rounded-lg">
+                            <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed break-words">
+                              {comment.message || "لا يوجد نص"}
+                            </p>
+                          </div>
+
+                          {/* إعجابات التعليق */}
+                          {comment.like_count && comment.like_count > 0 && (
+                            <div className="mt-2">
+                              <Badge variant="outline" className="text-xs bg-red-50 border-red-200 text-red-700">
+                                ❤️ {comment.like_count}
+                              </Badge>
+                            </div>
+                          )}
+
+                          {/* عرض نتيجة البحث عن الرقم للمعلق */}
+                          {comment.from?.id && phoneSearchResults[comment.from.id] && (
+                            <div className="mt-2">
+                              <Badge
+                                variant="secondary"
+                                className={`text-xs flex items-center gap-1 w-fit ${
+                                  phoneSearchResults[comment.from.id] === "لا يوجد رقم" ||
+                                  phoneSearchResults[comment.from.id] === "خطأ في البحث"
+                                    ? "bg-red-50 border-red-200 text-red-700"
+                                    : phoneSearchResults[comment.from.id] === "جاري البحث..."
+                                      ? "bg-yellow-50 border-yellow-200 text-yellow-700"
+                                      : "bg-green-50 border-green-200 text-green-700"
+                                }`}
+                              >
+                                <Phone className="w-3 h-3" />
+                                {phoneSearchResults[comment.from.id]}
+                                {phoneSearchResults[comment.from.id] !== "لا يوجد رقم" &&
+                                  phoneSearchResults[comment.from.id] !== "خطأ في البحث" &&
+                                  phoneSearchResults[comment.from.id] !== "جاري البحث..." && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => copyToClipboard(phoneSearchResults[comment.from.id])}
+                                      className="h-4 w-4 p-0 hover:bg-green-200 ml-1"
+                                    >
+                                      <Copy className="w-2 h-2" />
+                                    </Button>
+                                  )}
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              ) : (
+                <div className="text-center py-6 text-gray-500 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm">{text.noComments}</p>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </CardContent>
     </Card>
   )

@@ -385,6 +385,15 @@ export function SettingsPanel({ onDataRefresh, darkMode, language, userId }: Set
                       <Upload className="w-4 h-4 mr-2" />
                       {text.importSettings}
                     </Button>
+                </div>
+                
+                {/* Developer Info */}
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="text-sm text-blue-700 dark:text-blue-300">
+                    <p className="font-medium">FB Tracker Pro</p>
+                    <p>Developer: Ayman Abdelkawy</p>
+                    <p>Contact: +201003465095</p>
+                  </div>
                   </div>
                 </div>
               </div>

@@ -26,7 +26,7 @@ export function LoginForm({ onLogin, darkMode, language }: LoginFormProps) {
 
   const t = {
     ar: {
-      title: "مراقب فيسبوك المتقدم",
+      title: "FB Tracker Pro",
       subtitle: "نظام مراقبة وتحليل شامل لفيسبوك",
       login: "تسجيل الدخول",
       signup: "إنشاء حساب جديد",
@@ -51,7 +51,7 @@ export function LoginForm({ onLogin, darkMode, language }: LoginFormProps) {
       securityDesc: "جميع بياناتك محمية ومشفرة في Firebase",
     },
     en: {
-      title: "Advanced Facebook Monitor",
+      title: "FB Tracker Pro",
       subtitle: "Comprehensive Facebook monitoring and analysis system",
       login: "Login",
       signup: "Sign Up",

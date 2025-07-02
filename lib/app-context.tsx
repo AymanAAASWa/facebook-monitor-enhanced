@@ -41,7 +41,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // تحميل إعدادات المستخدم من Firebase
   const loadUserSettings = useCallback(async () => {
-    if (!user) return
+    if (!user || !firebaseService) return
 
     try {
       const result = await firebaseService.getUserSettings(user.uid)
@@ -65,11 +65,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // مراقبة حالة المصادقة
   useEffect(() => {
-    const unsubscribe = firebaseService.onAuthStateChange((authUser) => {
-      setUser(authUser)
-    })
+    if (!firebaseService) {
+      console.error('Firebase service is not available')
+      return
+    }
 
-    return () => unsubscribe()
+    if (typeof firebaseService.onAuthStateChange !== 'function') {
+      console.error('Firebase service onAuthStateChange method is not available')
+      return
+    }
+
+    try {
+      const unsubscribe = firebaseService.onAuthStateChange((authUser) => {
+        setUser(authUser)
+      })
+
+      return () => {
+        if (unsubscribe && typeof unsubscribe === 'function') {
+          unsubscribe()
+        }
+      }
+    } catch (error) {
+      console.error('Error setting up auth state listener:', error)
+    }
   }, [])
 
   const fetchData = useCallback(async () => {

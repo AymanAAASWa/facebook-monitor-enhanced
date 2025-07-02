@@ -2078,6 +2078,1811 @@ export class PhoneSearchService {
 }
 ```
 
-### إضافة باقي التفاصيل...
+#### `lib/firebase-service.ts` - خدمة Firebase للبيانات
+```typescript
+import { initializeApp } from 'firebase/app'
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  where, 
+  orderBy, 
+  limit,
+  onSnapshot,
+  writeBatch
+} from 'firebase/firestore'
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { getAuth, signInAnonymously } from 'firebase/auth'
 
-سأكمل باقي الملفات والتفاصيل في الرد التالي لضمان عدم انقطاع النص بسبب الطول.
+// إعداد Firebase
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+}
+
+const app = initializeApp(firebaseConfig)
+const db = getFirestore(app)
+const storage = getStorage(app)
+const auth = getAuth(app)
+
+export class FirebaseService {
+  private isInitialized = false
+  
+  constructor() {
+    this.initializeAuth()
+  }
+  
+  // تهيئة التوثيق
+  private async initializeAuth(): Promise<void> {
+    try {
+      await signInAnonymously(auth)
+      this.isInitialized = true
+      console.log('Firebase authentication successful')
+    } catch (error) {
+      console.error('Firebase authentication failed:', error)
+    }
+  }
+  
+  // حفظ المنشورات
+  async savePosts(posts: any[]): Promise<void> {
+    if (!this.isInitialized) await this.initializeAuth()
+    
+    const batch = writeBatch(db)
+    const postsCollection = collection(db, 'facebook_posts')
+    
+    posts.forEach(post => {
+      const docRef = doc(postsCollection, post.id)
+      batch.set(docRef, {
+        ...post,
+        saved_at: new Date().toISOString(),
+        processed: false
+      })
+    })
+    
+    await batch.commit()
+    console.log(`Saved ${posts.length} posts to Firebase`)
+  }
+  
+  // جلب المنشورات
+  async getPosts(options: {
+    limit?: number
+    startDate?: string
+    endDate?: string
+    source?: string
+  } = {}): Promise<any[]> {
+    if (!this.isInitialized) await this.initializeAuth()
+    
+    const postsCollection = collection(db, 'facebook_posts')
+    let q = query(postsCollection, orderBy('created_time', 'desc'))
+    
+    // إضافة الفلاتر
+    if (options.limit) {
+      q = query(q, limit(options.limit))
+    }
+    
+    if (options.source) {
+      q = query(q, where('source_name', '==', options.source))
+    }
+    
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+  }
+  
+  // حفظ بيانات المستخدم المحسنة
+  async saveEnhancedUser(userData: any): Promise<void> {
+    if (!this.isInitialized) await this.initializeAuth()
+    
+    const usersCollection = collection(db, 'enhanced_users')
+    const docRef = doc(usersCollection, userData.id)
+    
+    await updateDoc(docRef, {
+      ...userData,
+      last_updated: new Date().toISOString()
+    }).catch(async () => {
+      // إذا لم يجد المستند، أنشئه
+      await addDoc(usersCollection, {
+        ...userData,
+        created_at: new Date().toISOString(),
+        last_updated: new Date().toISOString()
+      })
+    })
+  }
+  
+  // حفظ أرقام الهواتف
+  async savePhoneNumbers(phoneData: any[]): Promise<void> {
+    if (!this.isInitialized) await this.initializeAuth()
+    
+    const batch = writeBatch(db)
+    const phonesCollection = collection(db, 'phone_numbers')
+    
+    phoneData.forEach(record => {
+      const docRef = doc(phonesCollection)
+      batch.set(docRef, {
+        ...record,
+        saved_at: new Date().toISOString()
+      })
+    })
+    
+    await batch.commit()
+  }
+  
+  // رفع الملفات
+  async uploadFile(file: File, path: string): Promise<string> {
+    if (!this.isInitialized) await this.initializeAuth()
+    
+    const storageRef = ref(storage, path)
+    const snapshot = await uploadBytes(storageRef, file)
+    return await getDownloadURL(snapshot.ref)
+  }
+  
+  // مراقبة البيانات في الوقت الفعلي
+  subscribeToCollection(
+    collectionName: string, 
+    callback: (data: any[]) => void,
+    options: {
+      limit?: number
+      orderBy?: { field: string, direction: 'asc' | 'desc' }
+      where?: { field: string, operator: any, value: any }
+    } = {}
+  ): () => void {
+    let q = query(collection(db, collectionName))
+    
+    if (options.orderBy) {
+      q = query(q, orderBy(options.orderBy.field, options.orderBy.direction))
+    }
+    
+    if (options.where) {
+      q = query(q, where(options.where.field, options.where.operator, options.where.value))
+    }
+    
+    if (options.limit) {
+      q = query(q, limit(options.limit))
+    }
+    
+    return onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      callback(data)
+    })
+  }
+}
+
+// تصدير instance واحد
+export const firebaseService = new FirebaseService()
+```
+
+### 📊 مكونات التحليلات والإحصائيات
+
+#### `components/analytics-dashboard.tsx` - لوحة التحليلات الرئيسية
+```typescript
+'use client'
+
+import React, { useState, useEffect, useMemo } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Progress } from "@/components/ui/progress"
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area
+} from 'recharts'
+import {
+  TrendingUp,
+  TrendingDown,
+  Users,
+  MessageSquare,
+  Heart,
+  Share2,
+  Clock,
+  Calendar,
+  Target,
+  Activity,
+  Zap,
+  Globe,
+  Filter,
+  Download,
+  RefreshCw
+} from 'lucide-react'
+
+interface AnalyticsDashboardProps {
+  posts: any[]
+  darkMode?: boolean
+  language?: "ar" | "en"
+}
+
+interface AnalyticsData {
+  totalPosts: number
+  totalEngagement: number
+  avgEngagementPerPost: number
+  topPosters: Array<{ name: string; count: number; engagement: number }>
+  engagementByDay: Array<{ date: string; engagement: number; posts: number }>
+  engagementByHour: Array<{ hour: number; engagement: number; posts: number }>
+  sourceDistribution: Array<{ name: string; count: number; percentage: number }>
+  contentTypes: Array<{ type: string; count: number; engagement: number }>
+  trends: {
+    postsGrowth: number
+    engagementGrowth: number
+    activeUsersGrowth: number
+  }
+}
+
+export function AnalyticsDashboard({ 
+  posts = [], 
+  darkMode = false, 
+  language = "ar" 
+}: AnalyticsDashboardProps) {
+  const [selectedTimeRange, setSelectedTimeRange] = useState<'7d' | '30d' | '90d'>('30d')
+  const [refreshing, setRefreshing] = useState(false)
+  
+  const t = {
+    ar: {
+      title: "لوحة التحليلات",
+      overview: "نظرة عامة",
+      engagement: "التفاعل",
+      users: "المستخدمون",
+      content: "المحتوى",
+      trends: "الاتجاهات",
+      totalPosts: "إجمالي المنشورات",
+      totalEngagement: "إجمالي التفاعل",
+      avgEngagement: "متوسط التفاعل",
+      activeUsers: "المستخدمون النشطون",
+      topPosters: "أكثر المنشورين نشاطاً",
+      engagementByTime: "التفاعل عبر الوقت",
+      sourceDistribution: "توزيع المصادر",
+      contentTypes: "أنواع المحتوى",
+      last7Days: "آخر 7 أيام",
+      last30Days: "آخر 30 يوم",
+      last90Days: "آخر 90 يوم",
+      refresh: "تحديث",
+      export: "تصدير",
+      loading: "جاري التحديث...",
+      postsGrowth: "نمو المنشورات",
+      engagementGrowth: "نمو التفاعل",
+      usersGrowth: "نمو المستخدمين",
+      hourlyActivity: "النشاط بالساعة",
+      dailyActivity: "النشاط اليومي",
+      posts: "منشور",
+      comments: "تعليق",
+      likes: "إعجاب",
+      shares: "مشاركة"
+    },
+    en: {
+      title: "Analytics Dashboard",
+      overview: "Overview",
+      engagement: "Engagement",
+      users: "Users",
+      content: "Content",
+      trends: "Trends",
+      totalPosts: "Total Posts",
+      totalEngagement: "Total Engagement",
+      avgEngagement: "Average Engagement",
+      activeUsers: "Active Users",
+      topPosters: "Top Posters",
+      engagementByTime: "Engagement Over Time",
+      sourceDistribution: "Source Distribution",
+      contentTypes: "Content Types",
+      last7Days: "Last 7 Days",
+      last30Days: "Last 30 Days",
+      last90Days: "Last 90 Days",
+      refresh: "Refresh",
+      export: "Export",
+      loading: "Refreshing...",
+      postsGrowth: "Posts Growth",
+      engagementGrowth: "Engagement Growth",
+      usersGrowth: "Users Growth",
+      hourlyActivity: "Hourly Activity",
+      dailyActivity: "Daily Activity",
+      posts: "Posts",
+      comments: "Comments",
+      likes: "Likes",
+      shares: "Shares"
+    }
+  }
+  
+  const text = t[language]
+  
+  // حساب البيانات التحليلية
+  const analyticsData = useMemo((): AnalyticsData => {
+    if (!posts || posts.length === 0) {
+      return {
+        totalPosts: 0,
+        totalEngagement: 0,
+        avgEngagementPerPost: 0,
+        topPosters: [],
+        engagementByDay: [],
+        engagementByHour: [],
+        sourceDistribution: [],
+        contentTypes: [],
+        trends: { postsGrowth: 0, engagementGrowth: 0, activeUsersGrowth: 0 }
+      }
+    }
+    
+    // فلترة المنشورات حسب المدة الزمنية المختارة
+    const now = new Date()
+    const daysBack = selectedTimeRange === '7d' ? 7 : selectedTimeRange === '30d' ? 30 : 90
+    const startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000)
+    
+    const filteredPosts = posts.filter(post => 
+      new Date(post.created_time) >= startDate
+    )
+    
+    // حساب الإحصائيات الأساسية
+    const totalPosts = filteredPosts.length
+    const totalEngagement = filteredPosts.reduce((sum, post) => {
+      const comments = post.comments?.data?.length || 0
+      const likes = post.likes?.summary?.total_count || 0
+      const shares = post.shares?.count || 0
+      return sum + comments + likes + shares
+    }, 0)
+    
+    const avgEngagementPerPost = totalPosts > 0 ? totalEngagement / totalPosts : 0
+    
+    // أكثر المنشورين نشاطاً
+    const posterStats = new Map<string, { count: number; engagement: number; name: string }>()
+    
+    filteredPosts.forEach(post => {
+      const userId = post.from?.id || 'unknown'
+      const userName = post.from?.name || 'مستخدم غير معروف'
+      const engagement = (post.comments?.data?.length || 0) + 
+                        (post.likes?.summary?.total_count || 0) + 
+                        (post.shares?.count || 0)
+      
+      if (!posterStats.has(userId)) {
+        posterStats.set(userId, { count: 0, engagement: 0, name: userName })
+      }
+      
+      const stats = posterStats.get(userId)!
+      stats.count++
+      stats.engagement += engagement
+    })
+    
+    const topPosters = Array.from(posterStats.entries())
+      .map(([id, stats]) => ({
+        name: stats.name,
+        count: stats.count,
+        engagement: stats.engagement
+      }))
+      .sort((a, b) => b.engagement - a.engagement)
+      .slice(0, 10)
+    
+    // التفاعل بالأيام
+    const engagementByDay = new Map<string, { engagement: number; posts: number }>()
+    
+    filteredPosts.forEach(post => {
+      const date = new Date(post.created_time).toISOString().split('T')[0]
+      const engagement = (post.comments?.data?.length || 0) + 
+                        (post.likes?.summary?.total_count || 0) + 
+                        (post.shares?.count || 0)
+      
+      if (!engagementByDay.has(date)) {
+        engagementByDay.set(date, { engagement: 0, posts: 0 })
+      }
+      
+      const dayStats = engagementByDay.get(date)!
+      dayStats.engagement += engagement
+      dayStats.posts++
+    })
+    
+    const engagementByDayArray = Array.from(engagementByDay.entries())
+      .map(([date, stats]) => ({ date, ...stats }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+    
+    // التفاعل بالساعات
+    const engagementByHour = Array.from({ length: 24 }, (_, hour) => {
+      const hourPosts = filteredPosts.filter(post => 
+        new Date(post.created_time).getHours() === hour
+      )
+      
+      const engagement = hourPosts.reduce((sum, post) => {
+        return sum + (post.comments?.data?.length || 0) + 
+                     (post.likes?.summary?.total_count || 0) + 
+                     (post.shares?.count || 0)
+      }, 0)
+      
+      return { hour, engagement, posts: hourPosts.length }
+    })
+    
+    // توزيع المصادر
+    const sourceStats = new Map<string, number>()
+    filteredPosts.forEach(post => {
+      const source = post.source_name || 'غير محدد'
+      sourceStats.set(source, (sourceStats.get(source) || 0) + 1)
+    })
+    
+    const sourceDistribution = Array.from(sourceStats.entries())
+      .map(([name, count]) => ({
+        name,
+        count,
+        percentage: Math.round((count / totalPosts) * 100)
+      }))
+      .sort((a, b) => b.count - a.count)
+    
+    // أنواع المحتوى
+    const contentTypes = [
+      {
+        type: 'نص فقط',
+        count: filteredPosts.filter(post => 
+          !post.attachments?.data?.length && !post.full_picture
+        ).length,
+        engagement: 0
+      },
+      {
+        type: 'صور',
+        count: filteredPosts.filter(post => 
+          post.full_picture || 
+          post.attachments?.data?.some((att: any) => att.type === 'photo')
+        ).length,
+        engagement: 0
+      },
+      {
+        type: 'فيديو',
+        count: filteredPosts.filter(post => 
+          post.attachments?.data?.some((att: any) => 
+            att.type === 'video_inline' || att.type === 'video_share'
+          )
+        ).length,
+        engagement: 0
+      },
+      {
+        type: 'روابط',
+        count: filteredPosts.filter(post => 
+          post.attachments?.data?.some((att: any) => att.type === 'share')
+        ).length,
+        engagement: 0
+      }
+    ]
+    
+    // حساب الاتجاهات (مقارنة مع الفترة السابقة)
+    const prevStartDate = new Date(startDate.getTime() - daysBack * 24 * 60 * 60 * 1000)
+    const prevPosts = posts.filter(post => {
+      const postDate = new Date(post.created_time)
+      return postDate >= prevStartDate && postDate < startDate
+    })
+    
+    const prevTotalPosts = prevPosts.length
+    const prevTotalEngagement = prevPosts.reduce((sum, post) => {
+      return sum + (post.comments?.data?.length || 0) + 
+                   (post.likes?.summary?.total_count || 0) + 
+                   (post.shares?.count || 0)
+    }, 0)
+    
+    const prevActiveUsers = new Set(prevPosts.map(post => post.from?.id)).size
+    const currentActiveUsers = new Set(filteredPosts.map(post => post.from?.id)).size
+    
+    const trends = {
+      postsGrowth: prevTotalPosts > 0 ? 
+        Math.round(((totalPosts - prevTotalPosts) / prevTotalPosts) * 100) : 0,
+      engagementGrowth: prevTotalEngagement > 0 ? 
+        Math.round(((totalEngagement - prevTotalEngagement) / prevTotalEngagement) * 100) : 0,
+      activeUsersGrowth: prevActiveUsers > 0 ? 
+        Math.round(((currentActiveUsers - prevActiveUsers) / prevActiveUsers) * 100) : 0
+    }
+    
+    return {
+      totalPosts,
+      totalEngagement,
+      avgEngagementPerPost,
+      topPosters,
+      engagementByDay: engagementByDayArray,
+      engagementByHour,
+      sourceDistribution,
+      contentTypes,
+      trends
+    }
+  }, [posts, selectedTimeRange])
+  
+  // تحديث البيانات
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    // محاكاة تحديث البيانات
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    setRefreshing(false)
+  }
+  
+  // تصدير البيانات
+  const handleExport = () => {
+    const data = {
+      analytics: analyticsData,
+      exportDate: new Date().toISOString(),
+      timeRange: selectedTimeRange
+    }
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { 
+      type: 'application/json' 
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `analytics-${selectedTimeRange}-${new Date().toISOString().split('T')[0]}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+  
+  // ألوان المخططات
+  const chartColors = {
+    primary: '#3b82f6',
+    secondary: '#ef4444',
+    accent: '#10b981',
+    warning: '#f59e0b',
+    purple: '#8b5cf6',
+    pink: '#ec4899'
+  }
+  
+  const pieColors = [
+    chartColors.primary,
+    chartColors.secondary,
+    chartColors.accent,
+    chartColors.warning,
+    chartColors.purple,
+    chartColors.pink
+  ]
+  
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">{text.title}</h2>
+          <p className="text-gray-600">
+            {text[selectedTimeRange === '7d' ? 'last7Days' : 
+                  selectedTimeRange === '30d' ? 'last30Days' : 'last90Days']}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {/* اختيار المدة الزمنية */}
+          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+            {(['7d', '30d', '90d'] as const).map((range) => (
+              <Button
+                key={range}
+                variant={selectedTimeRange === range ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setSelectedTimeRange(range)}
+                className="text-xs"
+              >
+                {text[range === '7d' ? 'last7Days' : 
+                      range === '30d' ? 'last30Days' : 'last90Days']}
+              </Button>
+            ))}
+          </div>
+          
+          {/* أزرار التحكم */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? text.loading : text.refresh}
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {text.export}
+          </Button>
+        </div>
+      </div>
+      
+      {/* الإحصائيات السريعة */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">{text.totalPosts}</p>
+                <p className="text-2xl font-bold">{analyticsData.totalPosts.toLocaleString()}</p>
+                <div className="flex items-center mt-1">
+                  {analyticsData.trends.postsGrowth >= 0 ? (
+                    <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
+                  ) : (
+                    <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
+                  )}
+                  <span className={`text-sm ${
+                    analyticsData.trends.postsGrowth >= 0 ? 'text-green-500' : 'text-red-500'
+                  }`}>
+                    {analyticsData.trends.postsGrowth}%
+                  </span>
+                </div>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <MessageSquare className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">{text.totalEngagement}</p>
+                <p className="text-2xl font-bold">{analyticsData.totalEngagement.toLocaleString()}</p>
+                <div className="flex items-center mt-1">
+                  {analyticsData.trends.engagementGrowth >= 0 ? (
+                    <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
+                  ) : (
+                    <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
+                  )}
+                  <span className={`text-sm ${
+                    analyticsData.trends.engagementGrowth >= 0 ? 'text-green-500' : 'text-red-500'
+                  }`}>
+                    {analyticsData.trends.engagementGrowth}%
+                  </span>
+                </div>
+              </div>
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <Heart className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">{text.avgEngagement}</p>
+                <p className="text-2xl font-bold">{Math.round(analyticsData.avgEngagementPerPost)}</p>
+                <div className="flex items-center mt-1">
+                  <Activity className="w-4 h-4 text-purple-500 mr-1" />
+                  <span className="text-sm text-gray-500">
+                    لكل منشور
+                  </span>
+                </div>
+              </div>
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Zap className="w-6 h-6 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">{text.activeUsers}</p>
+                <p className="text-2xl font-bold">
+                  {new Set(posts.map(post => post.from?.id)).size}
+                </p>
+                <div className="flex items-center mt-1">
+                  {analyticsData.trends.activeUsersGrowth >= 0 ? (
+                    <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
+                  ) : (
+                    <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
+                  )}
+                  <span className={`text-sm ${
+                    analyticsData.trends.activeUsersGrowth >= 0 ? 'text-green-500' : 'text-red-500'
+                  }`}>
+                    {analyticsData.trends.activeUsersGrowth}%
+                  </span>
+                </div>
+              </div>
+              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                <Users className="w-6 h-6 text-orange-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* التبويبات الرئيسية */}
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+          <TabsTrigger value="overview">{text.overview}</TabsTrigger>
+          <TabsTrigger value="engagement">{text.engagement}</TabsTrigger>
+          <TabsTrigger value="users">{text.users}</TabsTrigger>
+          <TabsTrigger value="content">{text.content}</TabsTrigger>
+        </TabsList>
+        
+        {/* تبويب النظرة العامة */}
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* التفاعل عبر الوقت */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  {text.dailyActivity}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={analyticsData.engagementByDay}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => new Date(value).toLocaleDateString('ar-EG')}
+                    />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip 
+                      labelFormatter={(value) => new Date(value).toLocaleDateString('ar-EG')}
+                      formatter={(value, name) => [
+                        value, 
+                        name === 'engagement' ? 'التفاعل' : 'المنشورات'
+                      ]}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="engagement" 
+                      stroke={chartColors.primary}
+                      fill={chartColors.primary}
+                      fillOpacity={0.3}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            
+            {/* النشاط بالساعة */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  {text.hourlyActivity}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analyticsData.engagementByHour}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="hour" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip 
+                      formatter={(value, name) => [
+                        value, 
+                        name === 'engagement' ? 'التفاعل' : 'المنشورات'
+                      ]}
+                    />
+                    <Bar 
+                      dataKey="engagement" 
+                      fill={chartColors.accent}
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* توزيع المصادر */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="w-5 h-5" />
+                {text.sourceDistribution}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={analyticsData.sourceDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      dataKey="count"
+                      label={({ name, percentage }) => `${name} (${percentage}%)`}
+                    >
+                      {analyticsData.sourceDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                
+                <div className="space-y-2">
+                  {analyticsData.sourceDistribution.map((source, index) => (
+                    <div key={source.name} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: pieColors[index % pieColors.length] }}
+                        />
+                        <span className="text-sm font-medium">{source.name}</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-bold">{source.count}</div>
+                        <div className="text-xs text-gray-500">{source.percentage}%</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* تبويب التفاعل */}
+        <TabsContent value="engagement" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>{text.engagementByTime}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={400}>
+                <LineChart data={analyticsData.engagementByDay}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="date" 
+                    tickFormatter={(value) => new Date(value).toLocaleDateString('ar-EG')}
+                  />
+                  <YAxis />
+                  <Tooltip 
+                    labelFormatter={(value) => new Date(value).toLocaleDateString('ar-EG')}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="engagement" 
+                    stroke={chartColors.primary}
+                    strokeWidth={3}
+                    dot={{ r: 4 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="posts" 
+                    stroke={chartColors.secondary}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* تبويب المستخدمين */}
+        <TabsContent value="users" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>{text.topPosters}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {analyticsData.topPosters.slice(0, 10).map((poster, index) => (
+                  <div key={poster.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-bold text-blue-600">#{index + 1}</span>
+                      </div>
+                      <div>
+                        <div className="font-medium">{poster.name}</div>
+                        <div className="text-sm text-gray-500">{poster.count} {text.posts}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-lg">{poster.engagement}</div>
+                      <div className="text-sm text-gray-500">تفاعل</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* تبويب المحتوى */}
+        <TabsContent value="content" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>{text.contentTypes}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {analyticsData.contentTypes.map((type, index) => (
+                  <div key={type.type} className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600 mb-2">
+                      {type.count}
+                    </div>
+                    <div className="text-sm font-medium mb-2">{type.type}</div>
+                    <Progress 
+                      value={(type.count / analyticsData.totalPosts) * 100} 
+                      className="h-2"
+                    />
+                    <div className="text-xs text-gray-500 mt-1">
+                      {Math.round((type.count / analyticsData.totalPosts) * 100)}%
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}
+```
+
+### 🔍 مكونات البحث والفلترة
+
+#### `components/phone-database-manager.tsx` - إدارة قاعدة بيانات الأرقام
+```typescript
+'use client'
+
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { 
+  Upload, 
+  Download, 
+  Search, 
+  Trash2, 
+  Plus, 
+  FileText, 
+  Database,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Users,
+  Phone,
+  MapPin,
+  Calendar,
+  Filter,
+  RefreshCw,
+  Settings,
+  Eye,
+  Edit,
+  Save,
+  X
+} from 'lucide-react'
+import { PhoneSearchService } from '@/lib/phone-search-service'
+import { GoogleDriveService } from '@/lib/google-drive-service'
+
+interface PhoneRecord {
+  id?: string
+  name: string
+  phone: string
+  location?: string
+  source?: string
+  notes?: string
+  lastUpdated?: string
+  verified?: boolean
+}
+
+interface DatabaseStats {
+  totalRecords: number
+  verifiedRecords: number
+  uniqueLocations: number
+  sources: { [key: string]: number }
+  lastUpdate: string
+}
+
+export function PhoneDatabaseManager() {
+  const [phoneRecords, setPhoneRecords] = useState<PhoneRecord[]>([])
+  const [filteredRecords, setFilteredRecords] = useState<PhoneRecord[]>([])
+  const [loading, setLoading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedSource, setSelectedSource] = useState<string>('all')
+  const [selectedLocation, setSelectedLocation] = useState<string>('all')
+  const [stats, setStats] = useState<DatabaseStats>({
+    totalRecords: 0,
+    verifiedRecords: 0,
+    uniqueLocations: 0,
+    sources: {},
+    lastUpdate: ''
+  })
+  const [newRecord, setNewRecord] = useState<PhoneRecord>({
+    name: '',
+    phone: '',
+    location: '',
+    source: 'manual',
+    notes: ''
+  })
+  const [editingRecord, setEditingRecord] = useState<PhoneRecord | null>(null)
+  const [showAddForm, setShowAddForm] = useState(false)
+  
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const phoneSearchService = new PhoneSearchService()
+  const googleDriveService = new GoogleDriveService()
+  
+  // تحميل البيانات عند بدء المكون
+  useEffect(() => {
+    loadPhoneDatabase()
+  }, [])
+  
+  // تطبيق الفلاتر
+  useEffect(() => {
+    applyFilters()
+  }, [phoneRecords, searchTerm, selectedSource, selectedLocation])
+  
+  // تحميل قاعدة البيانات
+  const loadPhoneDatabase = async () => {
+    setLoading(true)
+    try {
+      const records = await phoneSearchService.getAllRecords()
+      setPhoneRecords(records)
+      calculateStats(records)
+    } catch (error) {
+      console.error('خطأ في تحميل قاعدة البيانات:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  // حساب الإحصائيات
+  const calculateStats = (records: PhoneRecord[]) => {
+    const sources: { [key: string]: number } = {}
+    const locations = new Set<string>()
+    let verifiedCount = 0
+    
+    records.forEach(record => {
+      // مصادر البيانات
+      const source = record.source || 'غير محدد'
+      sources[source] = (sources[source] || 0) + 1
+      
+      // المواقع
+      if (record.location) {
+        locations.add(record.location)
+      }
+      
+      // السجلات المتحققة
+      if (record.verified) {
+        verifiedCount++
+      }
+    })
+    
+    setStats({
+      totalRecords: records.length,
+      verifiedRecords: verifiedCount,
+      uniqueLocations: locations.size,
+      sources,
+      lastUpdate: new Date().toISOString()
+    })
+  }
+  
+  // تطبيق الفلاتر
+  const applyFilters = () => {
+    let filtered = phoneRecords
+    
+    // فلترة البحث
+    if (searchTerm) {
+      filtered = filtered.filter(record =>
+        record.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        record.phone.includes(searchTerm) ||
+        record.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        record.notes?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+    
+    // فلترة المصدر
+    if (selectedSource !== 'all') {
+      filtered = filtered.filter(record => record.source === selectedSource)
+    }
+    
+    // فلترة الموقع
+    if (selectedLocation !== 'all') {
+      filtered = filtered.filter(record => record.location === selectedLocation)
+    }
+    
+    setFilteredRecords(filtered)
+  }
+  
+  // رفع ملف
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    
+    setLoading(true)
+    setUploadProgress(0)
+    
+    try {
+      const text = await file.text()
+      let newRecords: PhoneRecord[] = []
+      
+      if (file.name.endsWith('.json')) {
+        newRecords = JSON.parse(text)
+      } else if (file.name.endsWith('.csv')) {
+        newRecords = parseCSV(text)
+      } else {
+        throw new Error('نوع ملف غير مدعوم')
+      }
+      
+      // معالجة السجلات
+      for (let i = 0; i < newRecords.length; i++) {
+        await phoneSearchService.addRecord(newRecords[i])
+        setUploadProgress(Math.round(((i + 1) / newRecords.length) * 100))
+      }
+      
+      await loadPhoneDatabase()
+      alert(`تم رفع ${newRecords.length} سجل بنجاح`)
+      
+    } catch (error) {
+      console.error('خطأ في رفع الملف:', error)
+      alert('خطأ في رفع الملف')
+    } finally {
+      setLoading(false)
+      setUploadProgress(0)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+  
+  // تحليل ملف CSV
+  const parseCSV = (csvText: string): PhoneRecord[] => {
+    const lines = csvText.split('\n')
+    const headers = lines[0].split(',').map(h => h.trim())
+    
+    return lines.slice(1)
+      .filter(line => line.trim())
+      .map((line, index) => {
+        const values = line.split(',').map(v => v.trim().replace(/"/g, ''))
+        
+        return {
+          id: `csv_${index}`,
+          name: values[0] || '',
+          phone: values[1] || '',
+          location: values[2] || '',
+          source: 'csv_upload',
+          notes: values[3] || '',
+          lastUpdated: new Date().toISOString(),
+          verified: false
+        }
+      })
+      .filter(record => record.name && record.phone)
+  }
+  
+  // تصدير البيانات
+  const handleExport = async (format: 'json' | 'csv') => {
+    try {
+      let content: string
+      let filename: string
+      
+      if (format === 'json') {
+        content = JSON.stringify(filteredRecords, null, 2)
+        filename = `phone-database-${new Date().toISOString().split('T')[0]}.json`
+      } else {
+        const headers = ['الاسم', 'رقم الهاتف', 'الموقع', 'المصدر', 'ملاحظات', 'آخر تحديث']
+        const csvRows = [
+          headers.join(','),
+          ...filteredRecords.map(record => [
+            `"${record.name}"`,
+            `"${record.phone}"`,
+            `"${record.location || ''}"`,
+            `"${record.source || ''}"`,
+            `"${record.notes || ''}"`,
+            `"${record.lastUpdated || ''}"`
+          ].join(','))
+        ]
+        content = csvRows.join('\n')
+        filename = `phone-database-${new Date().toISOString().split('T')[0]}.csv`
+      }
+      
+      const blob = new Blob([content], { 
+        type: format === 'json' ? 'application/json' : 'text/csv' 
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      
+    } catch (error) {
+      console.error('خطأ في التصدير:', error)
+      alert('خطأ في تصدير البيانات')
+    }
+  }
+  
+  // إضافة سجل جديد
+  const handleAddRecord = async () => {
+    if (!newRecord.name || !newRecord.phone) {
+      alert('يرجى إدخال الاسم ورقم الهاتف')
+      return
+    }
+    
+    try {
+      const recordToAdd = {
+        ...newRecord,
+        id: `manual_${Date.now()}`,
+        lastUpdated: new Date().toISOString(),
+        verified: false
+      }
+      
+      await phoneSearchService.addRecord(recordToAdd)
+      await loadPhoneDatabase()
+      
+      setNewRecord({
+        name: '',
+        phone: '',
+        location: '',
+        source: 'manual',
+        notes: ''
+      })
+      setShowAddForm(false)
+      
+    } catch (error) {
+      console.error('خطأ في إضافة السجل:', error)
+      alert('خطأ في إضافة السجل')
+    }
+  }
+  
+  // تعديل سجل
+  const handleEditRecord = async (record: PhoneRecord) => {
+    if (!editingRecord) return
+    
+    try {
+      const updatedRecord = {
+        ...editingRecord,
+        lastUpdated: new Date().toISOString()
+      }
+      
+      await phoneSearchService.updateRecord(updatedRecord)
+      await loadPhoneDatabase()
+      setEditingRecord(null)
+      
+    } catch (error) {
+      console.error('خطأ في تعديل السجل:', error)
+      alert('خطأ في تعديل السجل')
+    }
+  }
+  
+  // حذف سجل
+  const handleDeleteRecord = async (recordId: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذا السجل؟')) return
+    
+    try {
+      await phoneSearchService.deleteRecord(recordId)
+      await loadPhoneDatabase()
+    } catch (error) {
+      console.error('خطأ في حذف السجل:', error)
+      alert('خطأ في حذف السجل')
+    }
+  }
+  
+  // التحقق من سجل
+  const handleVerifyRecord = async (recordId: string) => {
+    try {
+      await phoneSearchService.verifyRecord(recordId)
+      await loadPhoneDatabase()
+    } catch (error) {
+      console.error('خطأ في التحقق من السجل:', error)
+    }
+  }
+  
+  // الحصول على قائمة المصادر الفريدة
+  const uniqueSources = Array.from(new Set(phoneRecords.map(r => r.source).filter(Boolean)))
+  const uniqueLocations = Array.from(new Set(phoneRecords.map(r => r.location).filter(Boolean)))
+  
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <Database className="w-6 h-6" />
+            إدارة قاعدة بيانات الأرقام
+          </h2>
+          <p className="text-gray-600">
+            إدارة وتنظيم أرقام الهواتف والبحث فيها
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowAddForm(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            إضافة سجل
+          </Button>
+          
+          <Button
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading}
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            رفع ملف
+          </Button>
+          
+          <Button
+            variant="outline"
+            onClick={loadPhoneDatabase}
+            disabled={loading}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            تحديث
+          </Button>
+        </div>
+      </div>
+      
+      {/* إحصائيات سريعة */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">إجمالي السجلات</p>
+                <p className="text-2xl font-bold">{stats.totalRecords.toLocaleString()}</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Users className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">سجلات متحققة</p>
+                <p className="text-2xl font-bold">{stats.verifiedRecords.toLocaleString()}</p>
+                <div className="text-sm text-gray-500">
+                  {stats.totalRecords > 0 ? 
+                    Math.round((stats.verifiedRecords / stats.totalRecords) * 100) : 0}%
+                </div>
+              </div>
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">مواقع فريدة</p>
+                <p className="text-2xl font-bold">{stats.uniqueLocations}</p>
+              </div>
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <MapPin className="w-6 h-6 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">آخر تحديث</p>
+                <p className="text-sm font-bold">
+                  {stats.lastUpdate ? 
+                    new Date(stats.lastUpdate).toLocaleDateString('ar-EG') : 
+                    'غير محدد'}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                <Calendar className="w-6 h-6 text-orange-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* شريط التحكم */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            {/* البحث */}
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="البحث في السجلات..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pr-10"
+              />
+            </div>
+            
+            {/* فلترة المصدر */}
+            <select
+              value={selectedSource}
+              onChange={(e) => setSelectedSource(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="all">جميع المصادر</option>
+              {uniqueSources.map(source => (
+                <option key={source} value={source}>{source}</option>
+              ))}
+            </select>
+            
+            {/* فلترة الموقع */}
+            <select
+              value={selectedLocation}
+              onChange={(e) => setSelectedLocation(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="all">جميع المواقع</option>
+              {uniqueLocations.map(location => (
+                <option key={location} value={location}>{location}</option>
+              ))}
+            </select>
+            
+            {/* أزرار التصدير */}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleExport('json')}
+              >
+                <Download className="w-4 h-4 mr-1" />
+                JSON
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleExport('csv')}
+              >
+                <Download className="w-4 h-4 mr-1" />
+                CSV
+              </Button>
+            </div>
+          </div>
+          
+          {/* نتائج الفلترة */}
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <span>
+              عرض {filteredRecords.length} من {phoneRecords.length} سجل
+            </span>
+            {(searchTerm || selectedSource !== 'all' || selectedLocation !== 'all') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm('')
+                  setSelectedSource('all')
+                  setSelectedLocation('all')
+                }}
+              >
+                مسح الفلاتر
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* نموذج إضافة سجل جديد */}
+      {showAddForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              إضافة سجل جديد
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAddForm(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="name">الاسم *</Label>
+                <Input
+                  id="name"
+                  value={newRecord.name}
+                  onChange={(e) => setNewRecord({...newRecord, name: e.target.value})}
+                  placeholder="أدخل الاسم..."
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="phone">رقم الهاتف *</Label>
+                <Input
+                  id="phone"
+                  value={newRecord.phone}
+                  onChange={(e) => setNewRecord({...newRecord, phone: e.target.value})}
+                  placeholder="أدخل رقم الهاتف..."
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="location">الموقع</Label>
+                <Input
+                  id="location"
+                  value={newRecord.location}
+                  onChange={(e) => setNewRecord({...newRecord, location: e.target.value})}
+                  placeholder="أدخل الموقع..."
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="source">المصدر</Label>
+                <select
+                  id="source"
+                  value={newRecord.source}
+                  onChange={(e) => setNewRecord({...newRecord, source: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="manual">إدخال يدوي</option>
+                  <option value="facebook">فيسبوك</option>
+                  <option value="whatsapp">واتساب</option>
+                  <option value="contacts">جهات الاتصال</option>
+                  <option value="other">أخرى</option>
+                </select>
+              </div>
+              
+              <div className="sm:col-span-2">
+                <Label htmlFor="notes">ملاحظات</Label>
+                <Input
+                  id="notes"
+                  value={newRecord.notes}
+                  onChange={(e) => setNewRecord({...newRecord, notes: e.target.value})}
+                  placeholder="أدخل أي ملاحظات..."
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowAddForm(false)}
+              >
+                إلغاء
+              </Button>
+              <Button onClick={handleAddRecord}>
+                <Save className="w-4 h-4 mr-2" />
+                حفظ
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* جدول السجلات */}
+      <Card>
+        <CardHeader>
+          <CardTitle>سجلات قاعدة البيانات</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading && uploadProgress > 0 && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">جاري الرفع...</span>
+                <span className="text-sm font-medium">{uploadProgress}%</span>
+              </div>
+              <Progress value={uploadProgress} className="h-2" />
+            </div>
+          )}
+          
+          {loading && uploadProgress === 0 ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin mr-2" />
+              جاري التحميل...
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-right p-2">الاسم</th>
+                    <th className="text-right p-2">رقم الهاتف</th>
+                    <th className="text-right p-2">الموقع</th>
+                    <th className="text-right p-2">المصدر</th>
+                    <th className="text-right p-2">الحالة</th>
+                    <th className="text-right p-2">آخر تحديث</th>
+                    <th className="text-center p-2">الإجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRecords.map((record) => (
+                    <tr key={record.id} className="border-b hover:bg-gray-50">
+                      <td className="p-2">
+                        {editingRecord?.id === record.id ? (
+                          <Input
+                            value={editingRecord.name}
+                            onChange={(e) => setEditingRecord({
+                              ...editingRecord,
+                              name: e.target.value
+                            })}
+                            className="h-8"
+                          />
+                        ) : (
+                          <span className="font-medium">{record.name}</span>
+                        )}
+                      </td>
+                      <td className="p-2">
+                        {editingRecord?.id === record.id ? (
+                          <Input
+                            value={editingRecord.phone}
+                            onChange={(e) => setEditingRecord({
+                              ...editingRecord,
+                              phone: e.target.value
+                            })}
+                            className="h-8"
+                          />
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 text-gray-400" />
+                            <span className="font-mono text-sm">{record.phone}</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-2">
+                        {editingRecord?.id === record.id ? (
+                          <Input
+                            value={editingRecord.location || ''}
+                            onChange={(e) => setEditingRecord({
+                              ...editingRecord,
+                              location: e.target.value
+                            })}
+                            className="h-8"
+                          />
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4 text-gray-400" />
+                            <span className="text-sm">{record.location || 'غير محدد'}</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-2">
+                        <Badge variant="outline" className="text-xs">
+                          {record.source || 'غير محدد'}
+                        </Badge>
+                      </td>
+                      <td className="p-2">
+                        <Badge 
+                          variant={record.verified ? "default" : "secondary"}
+                          className="text-xs"
+                        >
+                          {record.verified ? (
+                            <>
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              متحقق
+                            </>
+                          ) : (
+                            <>
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              غير متحقق
+                            </>
+                          )}
+                        </Badge>
+                      </td>
+                      <td className="p-2 text-sm text-gray-500">
+                        {record.lastUpdated ? 
+                          new Date(record.lastUpdated).toLocaleDateString('ar-EG') : 
+                          'غير محدد'}
+                      </td>
+                      <td className="p-2">
+                        <div className="flex items-center justify-center gap-1">
+                          {editingRecord?.id === record.id ? (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditRecord(record)}
+                                className="h-6 w-6 p-0"
+                              >
+                                <Save className="w-3 h-3 text-green-600" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingRecord(null)}
+                                className="h-6 w-6 p-0"
+                              >
+                                <X className="w-3 h-3 text-gray-600" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingRecord(record)}
+                                className="h-6 w-6 p-0"
+                              >
+                                <Edit className="w-3 h-3 text-blue-600" />
+                              </Button>
+                              
+                              {!record.verified && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleVerifyRecord(record.id!)}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <CheckCircle className="w-3 h-3 text-green-600" />
+                                </Button>
+                              )}
+                              
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteRecord(record.id!)}
+                                className="h-6 w-6 p-0"
+                              >
+                                <Trash2 className="w-3 h-3 text-red-600" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {filteredRecords.length === 0 && !loading && (
+                <div className="text-center py-8 text-gray-500">
+                  <Database className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p>لا توجد سجلات تطابق معايير البحث</p>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* مدخل الملف المخفي */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json,.csv"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+    </div>
+  )
+}
+```
+
+## 🎯 تكامل النظام والاستنتاج
+
+### الربط بين المكونات:
+1. **FacebookMonitor** يجمع البيانات من API
+2. **EnhancedPostsList** يعرض البيانات مع أزرار التحليل
+3. **UserAnalyticsViewer** يحلل بيانات المستخدم المحددة
+4. **PhoneDatabaseManager** يدير أرقام الهواتف
+5. **AnalyticsDashboard** يعرض إحصائيات شاملة
+
+### تدفق البيانات:
+```
+Facebook API → EnhancedFacebookService → Firebase/LocalStorage
+     ↓
+AnalyticsDashboard ← EnhancedPostsList → UserAnalyticsViewer
+     ↓                    ↓
+PhoneSearchService ← PhoneDatabaseManager
+```
+
+### ملاحظات مهمة:
+- جميع المكونات محسنة للأجهزة المحمولة والتابلت والكمبيوتر
+- تم حل مشكلة أزرار المستخدم المكررة
+- تم إضافة تحليلات تفصيلية لكل مستخدم
+- تم تحسين عرض البيانات ومنع عودتها فارغة
+- جميع العمليات معروضة في الخريطة مع مساراتها الكاملة
